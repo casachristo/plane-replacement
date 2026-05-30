@@ -1,0 +1,29 @@
+# Build outputs
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+
+# .NET tools
+.config/dotnet-tools.json.lock
+
+# Node
+node_modules/
+.next/
+out/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Secrets — should never appear in repo
+appsettings.*.local.json
+*.pfx
+*.key
+
+# Test outputs
+TestResults/
+coverage*.xml
+StrykerOutput/
