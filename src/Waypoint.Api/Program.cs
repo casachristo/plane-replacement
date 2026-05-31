@@ -43,6 +43,11 @@ builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IIntentRepository, IntentRepository>();
 builder.Services.AddScoped<IPrincipalResolver, OidcSessionResolver>();
 builder.Services.AddScoped<IPrincipalResolver, ServiceBearerResolver>();
+builder.Services.AddHttpClient("waypoint-webhooks", client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(15);
+});
+builder.Services.AddHostedService<Waypoint.Api.Webhooks.WebhookDispatcher>();
 
 // OIDC + Cookie authentication: used only for the /auth/* login flow. Once we have a
 // waypoint_session cookie, the OidcSessionResolver takes over and we no longer rely on
@@ -88,6 +93,8 @@ app.UseMiddleware<AuditLogMiddleware>();
 app.MapGet("/healthz/live", () => Results.Ok(new { status = "ok" }));
 
 app.MapAuthEndpoints();
+app.MapWebhookEndpoints();
+app.MapAdminEndpoints();
 
 // Public surface (:8080)
 app.MapProjectEndpoints("/api/v1/projects");
