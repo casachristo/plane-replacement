@@ -17,6 +17,13 @@ public class WaypointDbContext(DbContextOptions<WaypointDbContext> options) : Db
     public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
     public DbSet<TokenAuditLog> TokenAuditLog => Set<TokenAuditLog>();
     public DbSet<IssueIntent> IssueIntents => Set<IssueIntent>();
+    public DbSet<Epic> Epics => Set<Epic>();
+    public DbSet<Cycle> Cycles => Set<Cycle>();
+    public DbSet<Label> Labels => Set<Label>();
+    public DbSet<IssueLabel> IssueLabels => Set<IssueLabel>();
+    public DbSet<Component> Components => Set<Component>();
+    public DbSet<IssueComponent> IssueComponents => Set<IssueComponent>();
+    public DbSet<Attachment> Attachments => Set<Attachment>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

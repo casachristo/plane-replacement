@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Waypoint.Domain\Waypoint.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Waypoint.Importer\Waypoint.Importer.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

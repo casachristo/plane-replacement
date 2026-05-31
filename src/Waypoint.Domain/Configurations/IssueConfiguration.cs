@@ -27,6 +27,10 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
             .OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(i => i.ParentIssue).WithMany().HasForeignKey(i => i.ParentIssueId)
             .OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(i => i.Epic).WithMany().HasForeignKey(i => i.EpicId)
+            .OnDelete(DeleteBehavior.SetNull);
+        builder.HasOne(i => i.Cycle).WithMany().HasForeignKey(i => i.CycleId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.HasIndex(i => new { i.ProjectId, i.SequenceId }).IsUnique();
         builder.HasIndex(i => new { i.ProjectId, i.StateId });
         builder.HasIndex(i => i.UpdatedAt);

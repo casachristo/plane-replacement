@@ -10,6 +10,8 @@
     <!-- CA1861 (prefer static readonly arrays) is constantly tripped by EF Core generated migrations. -->
     <!-- CA1861: prefer static readonly arrays — EF generated migrations trigger this constantly.
          CA1848: LoggerMessage source-gen — premature perf optimization for a homelab service. -->
-    <NoWarn>$(NoWarn);CA1861;CA1848</NoWarn>
+    <!-- CA1861/CA1848/CA1869: micro-perf hints triggered constantly by generated code
+         and non-hot-path serialization. Not worth the code noise for a homelab service. -->
+    <NoWarn>$(NoWarn);CA1861;CA1848;CA1869</NoWarn>
   </PropertyGroup>
 </Project>

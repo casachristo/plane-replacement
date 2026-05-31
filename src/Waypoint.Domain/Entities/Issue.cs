@@ -17,6 +17,10 @@ public class Issue
     public IssueType IssueType { get; set; } = null!;
     public Guid? ParentIssueId { get; set; }
     public Issue? ParentIssue { get; set; }
+    public Guid? EpicId { get; set; }
+    public Epic? Epic { get; set; }
+    public Guid? CycleId { get; set; }
+    public Cycle? Cycle { get; set; }
     public Guid[] AssigneeIds { get; set; } = [];
     public DateTimeOffset? DueDate { get; set; }
     public string? ExternalId { get; set; }
