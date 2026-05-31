@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: waypoint-postgres
+  namespace: {{ .Values.namespace }}
+  labels: { app: waypoint-postgres }
+spec:
+  serviceName: waypoint-postgres
+  replicas: 1
+  selector:
+    matchLabels: { app: waypoint-postgres }
+  template:
+    metadata:
+      labels: { app: waypoint-postgres }
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Values.postgres.image }}
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: {{ .Values.postgres.database | quote }}
+            - name: POSTGRES_USER
+              value: {{ .Values.postgres.username | quote }}
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: waypoint-config, key: postgres-password }
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "{{ .Values.postgres.username }}"]
+            periodSeconds: 5
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- with .Values.postgres.storageClass }}
+        storageClassName: {{ . | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.postgres.storage }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: waypoint-postgres
+  namespace: {{ .Values.namespace }}
+spec:
+  clusterIP: None    # headless — addressable as waypoint-postgres-0.waypoint-postgres
+  selector: { app: waypoint-postgres }
+  ports:
+    - port: 5432
+      targetPort: 5432

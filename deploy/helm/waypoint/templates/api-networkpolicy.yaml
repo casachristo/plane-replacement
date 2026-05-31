@@ -1,0 +1,41 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: waypoint-api-restrict
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels: { app: waypoint-api }
+  policyTypes: [Ingress]
+  ingress:
+    # Public port: any pod in the cluster (Traefik fronts the internet)
+    - from: []
+      ports:
+        - port: {{ .Values.api.publicPort }}
+          protocol: TCP
+    # Internal port: Cairn pods ONLY
+    - from:
+        - podSelector:
+            matchLabels: { app: cairn-api }
+      ports:
+        - port: {{ .Values.api.internalPort }}
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: waypoint-postgres-restrict
+  namespace: {{ .Values.namespace }}
+spec:
+  podSelector:
+    matchLabels: { app: waypoint-postgres }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app: waypoint-api }
+        - podSelector:
+            matchLabels: { app: waypoint-postgres-backup }
+      ports:
+        - port: 5432
+          protocol: TCP

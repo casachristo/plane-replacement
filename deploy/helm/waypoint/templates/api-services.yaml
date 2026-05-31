@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: waypoint-public
+  namespace: {{ .Values.namespace }}
+  labels: { app: waypoint-api }
+spec:
+  type: ClusterIP
+  selector: { app: waypoint-api }
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.api.publicPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: waypoint-internal
+  namespace: {{ .Values.namespace }}
+  labels: { app: waypoint-api }
+spec:
+  type: ClusterIP
+  selector: { app: waypoint-api }
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.api.internalPort }}

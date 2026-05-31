@@ -1,0 +1,53 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: waypoint-postgres-backup
+  namespace: {{ .Values.namespace }}
+  labels: { app: waypoint-postgres-backup }
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        metadata:
+          labels: { app: waypoint-postgres-backup }
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: {{ .Values.postgres.image }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  TS=$(date -u +%Y%m%dT%H%M%SZ)
+                  pg_dump -h waypoint-postgres -U $POSTGRES_USER -d $POSTGRES_DB \
+                    | gzip > /tmp/waypoint-${TS}.sql.gz
+                  # Upload via curl (MinIO API). Replace with mc / aws s3 if preferred.
+                  curl -sS --fail -X PUT \
+                    -H "Authorization: Bearer ${S3_TOKEN}" \
+                    --data-binary @/tmp/waypoint-${TS}.sql.gz \
+                    "${S3_ENDPOINT}/${S3_BUCKET}/waypoint/waypoint-${TS}.sql.gz"
+                  echo "Uploaded waypoint-${TS}.sql.gz"
+              env:
+                - name: POSTGRES_USER
+                  value: {{ .Values.postgres.username | quote }}
+                - name: POSTGRES_DB
+                  value: {{ .Values.postgres.database | quote }}
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef: { name: waypoint-config, key: postgres-password }
+                - name: S3_ENDPOINT
+                  value: {{ .Values.backup.s3.endpoint | quote }}
+                - name: S3_BUCKET
+                  value: {{ .Values.backup.s3.bucket | quote }}
+                - name: S3_TOKEN
+                  valueFrom:
+                    secretKeyRef: { name: waypoint-config, key: s3-token }
+{{- end }}

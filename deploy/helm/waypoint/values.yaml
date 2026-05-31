@@ -1,0 +1,67 @@
+## Waypoint Helm chart values
+## Override per-env in values-<env>.yaml.
+
+namespace: media
+
+api:
+  image:
+    repository: gitea.chris.box/chris/waypoint-api
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  publicPort: 8080
+  internalPort: 8081
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+  env:
+    ASPNETCORE_ENVIRONMENT: Production
+  # OIDC values come from the waypoint-oidc Secret; only non-secret bits live here.
+  oidc:
+    authority: https://auth.chris.box
+    clientId: waypoint
+    redirectUri: https://waypoint.chris.box/auth/callback
+    scopes: ["openid", "profile", "email", "groups"]
+    adminGroups: ["waypoint-admins"]
+
+web:
+  image:
+    repository: gitea.chris.box/chris/waypoint-web
+    tag: "0.1.0"
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 3000
+  apiBase: https://waypoint.chris.box
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+postgres:
+  image: postgres:16-alpine
+  storage: 50Gi
+  storageClass: ""    # use cluster default
+  database: waypoint
+  username: waypoint
+  # Password sourced from waypoint-config Secret
+
+ingress:
+  host: waypoint.chris.box
+  tlsSecretName: waypoint-tls
+
+backup:
+  enabled: true
+  schedule: "0 3 * * *"
+  retentionDays: 30
+  s3:
+    bucket: homelab-backups
+    endpoint: https://minio.chris.box
+    region: homelab
+    # accessKey / secretKey sourced from waypoint-config Secret

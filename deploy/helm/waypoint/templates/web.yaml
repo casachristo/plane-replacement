@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: waypoint-web
+  namespace: {{ .Values.namespace }}
+  labels: { app: waypoint-web }
+spec:
+  replicas: {{ .Values.web.replicas }}
+  selector:
+    matchLabels: { app: waypoint-web }
+  template:
+    metadata:
+      labels: { app: waypoint-web }
+    spec:
+      containers:
+        - name: web
+          image: "{{ .Values.web.image.repository }}:{{ .Values.web.image.tag }}"
+          imagePullPolicy: {{ .Values.web.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.web.port }}
+          env:
+            - name: WAYPOINT_API_BASE
+              value: {{ .Values.web.apiBase | quote }}
+            - name: PORT
+              value: {{ .Values.web.port | quote }}
+          readinessProbe:
+            httpGet: { path: /, port: {{ .Values.web.port }} }
+            initialDelaySeconds: 5
+          resources:
+            {{- toYaml .Values.web.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: waypoint-web
+  namespace: {{ .Values.namespace }}
+  labels: { app: waypoint-web }
+spec:
+  type: ClusterIP
+  selector: { app: waypoint-web }
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.web.port }}
