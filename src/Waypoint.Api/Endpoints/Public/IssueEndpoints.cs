@@ -5,13 +5,13 @@ using Waypoint.Contracts;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
 
-namespace Waypoint.Api.Endpoints;
+namespace Waypoint.Api.Endpoints.PublicApi;
 
 public static class IssueEndpoints
 {
-    public static void MapIssueEndpoints(this IEndpointRouteBuilder app)
+    public static void MapIssueEndpoints(this IEndpointRouteBuilder app, string projectsPrefix)
     {
-        var group = app.MapGroup("/api/v1/projects/{slug}/issues");
+        var group = app.MapGroup($"{projectsPrefix}/{{slug}}/issues");
 
         group.MapPost("/", async (string slug, CreateIssueRequest req,
             IProjectRepository projects, IIssueRepository issues, CancellationToken ct) =>
@@ -20,7 +20,7 @@ public static class IssueEndpoints
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var issue = await issues.CreateAsync(project.Id, req.Title, req.DescriptionMd, req.IssueTypeId, ct);
             var withIncludes = await issues.GetBySequenceAsync(project.Id, issue.SequenceId, ct);
-            return Results.Created($"/api/v1/projects/{slug}/issues/{issue.SequenceId}", ToDto(withIncludes!));
+            return Results.Created($"{projectsPrefix}/{slug}/issues/{issue.SequenceId}", ToDto(withIncludes!));
         });
 
         group.MapGet("/{seq:int}", async (string slug, int seq,

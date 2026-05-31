@@ -2,19 +2,20 @@ using Waypoint.Api.Repositories;
 using Waypoint.Contracts;
 using Waypoint.Domain;
 
-namespace Waypoint.Api.Endpoints;
+namespace Waypoint.Api.Endpoints.PublicApi;
 
 public static class ProjectEndpoints
 {
-    public static void MapProjectEndpoints(this IEndpointRouteBuilder app)
+    /// <summary>Maps project routes under <paramref name="prefix"/>. Called once with /api/v1/projects (public) and once with /internal/v1/projects (internal).</summary>
+    public static void MapProjectEndpoints(this IEndpointRouteBuilder app, string prefix)
     {
-        var group = app.MapGroup("/api/v1/projects");
+        var group = app.MapGroup(prefix);
 
         group.MapPost("/", async (CreateProjectRequest req, IProjectRepository repo, CancellationToken ct) =>
         {
             var p = await repo.CreateAsync(req.Slug, req.Name, req.Identifier, ct);
             var dto = new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt);
-            return Results.Created($"/api/v1/projects/{p.Slug}", dto);
+            return Results.Created($"{prefix}/{p.Slug}", dto);
         });
 
         group.MapGet("/{slug}", async (string slug, IProjectRepository repo, CancellationToken ct) =>

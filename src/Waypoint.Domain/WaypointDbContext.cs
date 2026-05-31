@@ -14,6 +14,9 @@ public class WaypointDbContext(DbContextOptions<WaypointDbContext> options) : Db
     public DbSet<Issue> Issues => Set<Issue>();
     public DbSet<Comment> Comments => Set<Comment>();
     public DbSet<Activity> Activities => Set<Activity>();
+    public DbSet<ApiToken> ApiTokens => Set<ApiToken>();
+    public DbSet<TokenAuditLog> TokenAuditLog => Set<TokenAuditLog>();
+    public DbSet<IssueIntent> IssueIntents => Set<IssueIntent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

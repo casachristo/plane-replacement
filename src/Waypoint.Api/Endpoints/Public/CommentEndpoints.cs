@@ -3,13 +3,13 @@ using Waypoint.Api.Repositories;
 using Waypoint.Contracts;
 using Waypoint.Domain;
 
-namespace Waypoint.Api.Endpoints;
+namespace Waypoint.Api.Endpoints.PublicApi;
 
 public static class CommentEndpoints
 {
-    public static void MapCommentEndpoints(this IEndpointRouteBuilder app)
+    public static void MapCommentEndpoints(this IEndpointRouteBuilder app, string projectsPrefix)
     {
-        var group = app.MapGroup("/api/v1/projects/{slug}/issues/{seq:int}/comments");
+        var group = app.MapGroup($"{projectsPrefix}/{{slug}}/issues/{{seq:int}}/comments");
 
         group.MapPost("/", async (string slug, int seq, CreateCommentRequest req,
             IProjectRepository projects, ICommentRepository comments, WaypointDbContext db, CancellationToken ct) =>
