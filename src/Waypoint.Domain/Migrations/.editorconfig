@@ -1,0 +1,6 @@
+root = false
+
+# Auto-generated EF Core migration code — analyzer noise.
+[*.{cs,Designer.cs}]
+dotnet_diagnostic.CA1861.severity = none
+dotnet_diagnostic.CA1707.severity = none
