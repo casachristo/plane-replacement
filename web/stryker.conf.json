@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-js/master/packages/api/schema/stryker-core.json",
+  "packageManager": "npm",
+  "reporters": ["progress", "html", "json", "clear-text"],
+  "testRunner": "command",
+  "commandRunner": {
+    "command": "npm run typecheck"
+  },
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "src/lib/**/*.ts"
+  ],
+  "thresholds": { "high": 80, "low": 70, "break": 70 },
+  "concurrency": 4
+}

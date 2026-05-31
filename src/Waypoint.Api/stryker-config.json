@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/docs/stryker-config.schema.json",
+  "stryker-config": {
+    "project": "Waypoint.Api.csproj",
+    "test-projects": ["../../tests/Waypoint.Api.Tests/Waypoint.Api.Tests.csproj"],
+    "mutate": [
+      "Auth/**/*.cs",
+      "Endpoints/**/*.cs",
+      "Middleware/**/*.cs",
+      "!**/Program.cs"
+    ],
+    "thresholds": { "high": 90, "low": 80, "break": 80 },
+    "reporters": ["progress", "html", "json", "cleartext"],
+    "concurrency": 4,
+    "diff-ignore-changes": [
+      "**/*.csproj",
+      "**/*.json"
+    ]
+  }
+}

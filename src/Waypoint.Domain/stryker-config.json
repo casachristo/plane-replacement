@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/docs/stryker-config.schema.json",
+  "stryker-config": {
+    "project": "Waypoint.Domain.csproj",
+    "test-projects": ["../../tests/Waypoint.Domain.Tests/Waypoint.Domain.Tests.csproj"],
+    "mutate": [
+      "**/Validation/**/*.cs",
+      "**/Entities/**/*.cs",
+      "!**/Migrations/**/*.cs"
+    ],
+    "thresholds": { "high": 90, "low": 85, "break": 85 },
+    "reporters": ["progress", "html", "json", "cleartext"],
+    "concurrency": 4
+  }
+}

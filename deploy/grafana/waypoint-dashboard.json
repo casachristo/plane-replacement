@@ -1,0 +1,50 @@
+{
+  "title": "Waypoint",
+  "uid": "waypoint-main",
+  "schemaVersion": 38,
+  "version": 1,
+  "tags": ["waypoint", "homelab"],
+  "timezone": "browser",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request rate (per surface)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum by (path) (rate(http_server_request_duration_seconds_count{job=\"waypoint-api\"}[5m]))", "legendFormat": "{{path}}" }
+      ],
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "id": 2,
+      "title": "Endpoint p95 latency",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le, path) (rate(waypoint_endpoint_duration_ms_bucket[5m])))", "legendFormat": "p95 {{path}}" }
+      ],
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 }
+    },
+    {
+      "id": 3,
+      "title": "Webhook delivery success rate",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum(rate(waypoint_webhook_deliveries_attempted_total{status=\"success\"}[1h])) / sum(rate(waypoint_webhook_deliveries_attempted_total[1h]))" }
+      ],
+      "gridPos": { "x": 0, "y": 8, "w": 6, "h": 4 }
+    },
+    {
+      "id": 4,
+      "title": "Service token usage (by name)",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "targets": [
+        { "expr": "sum by (token_name) (rate(waypoint_tokens_used_total[5m]))", "legendFormat": "{{token_name}}" }
+      ],
+      "gridPos": { "x": 6, "y": 8, "w": 18, "h": 4 }
+    }
+  ]
+}
