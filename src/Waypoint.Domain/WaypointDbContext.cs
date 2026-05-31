@@ -24,6 +24,7 @@ public class WaypointDbContext(DbContextOptions<WaypointDbContext> options) : Db
     public DbSet<Component> Components => Set<Component>();
     public DbSet<IssueComponent> IssueComponents => Set<IssueComponent>();
     public DbSet<Attachment> Attachments => Set<Attachment>();
+    public DbSet<UserSession> UserSessions => Set<UserSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

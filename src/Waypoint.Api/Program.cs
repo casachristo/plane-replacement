@@ -1,4 +1,7 @@
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Waypoint.Api;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Endpoints.InternalApi;
@@ -22,9 +25,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.WebHost.UseKestrel(opts =>
 {
-    opts.ListenAnyIP(8080);  // public
-    opts.ListenAnyIP(8081);  // internal
+    opts.ListenAnyIP(8080);
+    opts.ListenAnyIP(8081);
 });
+
+builder.Services.Configure<OidcOptions>(builder.Configuration.GetSection(OidcOptions.SectionName));
 
 builder.Services.AddOpenApi();
 builder.Services.AddDbContext<WaypointDbContext>(opts =>
@@ -36,11 +41,43 @@ builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IIssueRepository, IssueRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IIntentRepository, IntentRepository>();
+builder.Services.AddScoped<IPrincipalResolver, OidcSessionResolver>();
 builder.Services.AddScoped<IPrincipalResolver, ServiceBearerResolver>();
+
+// OIDC + Cookie authentication: used only for the /auth/* login flow. Once we have a
+// waypoint_session cookie, the OidcSessionResolver takes over and we no longer rely on
+// ASP.NET Core's auth pipeline for application requests.
+var oidcSection = builder.Configuration.GetSection(OidcOptions.SectionName);
+var authority = oidcSection.GetValue<string>("Authority") ?? "https://auth.chris.box";
+var clientId = oidcSection.GetValue<string>("ClientId") ?? "waypoint";
+var clientSecret = oidcSection.GetValue<string>("ClientSecret") ?? "";
+builder.Services.AddAuthentication(opts =>
+{
+    opts.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    opts.DefaultChallengeScheme = OpenIdConnectDefaults.AuthenticationScheme;
+})
+.AddCookie()
+.AddOpenIdConnect(opts =>
+{
+    opts.Authority = authority;
+    opts.ClientId = clientId;
+    opts.ClientSecret = clientSecret;
+    opts.ResponseType = "code";
+    opts.UsePkce = true;
+    opts.SaveTokens = true;
+    opts.Scope.Clear();
+    foreach (var s in oidcSection.GetValue<string[]>("Scopes") ?? ["openid", "profile", "email", "groups"])
+        opts.Scope.Add(s);
+    opts.TokenValidationParameters = new TokenValidationParameters
+    {
+        NameClaimType = oidcSection.GetValue<string>("NameClaim") ?? "name",
+    };
+});
 
 var app = builder.Build();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
+app.UseAuthentication();
 app.UseMiddleware<RequestIdMiddleware>();
 app.UseMiddleware<ErrorEnvelopeMiddleware>();
 app.UseMiddleware<SurfaceGuardMiddleware>();
@@ -50,7 +87,9 @@ app.UseMiddleware<AuditLogMiddleware>();
 
 app.MapGet("/healthz/live", () => Results.Ok(new { status = "ok" }));
 
-// Public surface (:8080 in K8s; locally both ports route same code)
+app.MapAuthEndpoints();
+
+// Public surface (:8080)
 app.MapProjectEndpoints("/api/v1/projects");
 app.MapIssueEndpoints("/api/v1/projects");
 app.MapCommentEndpoints("/api/v1/projects");

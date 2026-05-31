@@ -5,6 +5,9 @@ public class User
     public Guid Id { get; set; }
     public required string Email { get; set; }
     public required string DisplayName { get; set; }
+    public string? OidcSub { get; set; }
+    public string? OidcIssuer { get; set; }
+    public string[]? Groups { get; set; }
     public DateTimeOffset CreatedAt { get; set; }
     public DateTimeOffset UpdatedAt { get; set; }
     public DateTimeOffset? LastLoginAt { get; set; }
