@@ -21,6 +21,7 @@ app.UseMiddleware<ErrorEnvelopeMiddleware>();
 
 app.MapGet("/healthz/live", () => Results.Ok(new { status = "ok" }));
 app.MapProjectEndpoints();
+app.MapIssueEndpoints();
 
 if (app.Environment.EnvironmentName == "Testing")
 {
