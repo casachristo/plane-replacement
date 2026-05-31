@@ -11,6 +11,7 @@ public class DesignTimeDbContextFactory : IDesignTimeDbContextFactory<WaypointDb
                       ?? "Host=chris.box;Port=15432;Database=waypoint_design;Username=waypoint;Password=waypoint";
         var options = new DbContextOptionsBuilder<WaypointDbContext>()
             .UseNpgsql(connStr)
+            .UseSnakeCaseNamingConvention()
             .Options;
         return new WaypointDbContext(options);
     }

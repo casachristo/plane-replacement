@@ -15,6 +15,7 @@ public class DbContextSmokeTests : IClassFixture<PostgresFixture>
     {
         var options = new DbContextOptionsBuilder<WaypointDbContext>()
             .UseNpgsql(_fixture.ConnectionString)
+            .UseSnakeCaseNamingConvention()
             .Options;
         await using var ctx = new WaypointDbContext(options);
         var canConnect = await ctx.Database.CanConnectAsync();
