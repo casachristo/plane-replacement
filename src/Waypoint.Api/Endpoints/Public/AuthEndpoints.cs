@@ -98,6 +98,30 @@ public static class AuthEndpoints
             return Results.NoContent();
         });
 
+        app.MapGet("/auth/debug-cookies", (HttpContext ctx) =>
+        {
+            return Results.Ok(new
+            {
+                cookiesReceived = ctx.Request.Cookies.Keys.ToArray(),
+                isHttps = ctx.Request.IsHttps,
+                scheme = ctx.Request.Scheme,
+                host = ctx.Request.Host.Value,
+                xForwardedProto = ctx.Request.Headers["X-Forwarded-Proto"].ToString(),
+                xForwardedHost = ctx.Request.Headers["X-Forwarded-Host"].ToString(),
+                remoteIp = ctx.Connection.RemoteIpAddress?.ToString(),
+            });
+        });
+
+        app.MapGet("/auth/debug-setcookie", (HttpContext ctx) =>
+        {
+            ctx.Response.Cookies.Append("debug_test", "hello", new CookieOptions
+            {
+                HttpOnly = false, Secure = ctx.Request.IsHttps, SameSite = SameSiteMode.Lax, Path = "/",
+                Expires = DateTimeOffset.UtcNow.AddHours(1),
+            });
+            return Results.Ok(new { setCookie = "debug_test=hello", isHttps = ctx.Request.IsHttps });
+        });
+
         app.MapGet("/api/v1/whoami", (HttpContext ctx) =>
         {
             var principal = ctx.GetPrincipal();
