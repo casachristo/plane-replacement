@@ -78,6 +78,9 @@ builder.Services.AddAuthentication(opts =>
     opts.ResponseType = "code";
     opts.UsePkce = true;
     opts.SaveTokens = true;
+    // .NET 10 defaults to Pushed Authorization Requests (PAR). Authelia's per-client
+    // PAR support is opt-in; we use the classic redirect flow.
+    opts.PushedAuthorizationBehavior = Microsoft.AspNetCore.Authentication.OpenIdConnect.PushedAuthorizationBehavior.Disable;
     opts.Scope.Clear();
     foreach (var s in oidcSection.GetValue<string[]>("Scopes") ?? ["openid", "profile", "email", "groups"])
         opts.Scope.Add(s);
