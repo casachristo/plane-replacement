@@ -10,7 +10,7 @@ using Waypoint.Api.Middleware;
 using Waypoint.Api.Repositories;
 using Waypoint.Domain;
 
-if (args.Length > 0 && args[0] == "seed-token")
+if (args.Length > 0 && (args[0] == "seed-token" || args[0] == "migrate"))
 {
     var hostBuilder = WebApplication.CreateBuilder();
     hostBuilder.Services.AddDbContext<WaypointDbContext>(opts =>
@@ -18,6 +18,14 @@ if (args.Length > 0 && args[0] == "seed-token")
                        ?? "Host=chris.box;Port=15432;Database=waypoint;Username=waypoint;Password=waypoint")
             .UseSnakeCaseNamingConvention());
     var seedApp = hostBuilder.Build();
+    if (args[0] == "migrate")
+    {
+        using var scope = seedApp.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
+        await db.Database.MigrateAsync();
+        Console.WriteLine("Migrations applied.");
+        Environment.Exit(0);
+    }
     Environment.Exit(await SeedToken.RunAsync(args[1..], seedApp.Services));
 }
 
