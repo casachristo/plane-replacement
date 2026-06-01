@@ -98,59 +98,6 @@ public static class AuthEndpoints
             return Results.NoContent();
         });
 
-        app.MapGet("/auth/debug-cookies", async (HttpContext ctx, WaypointDbContext db) =>
-        {
-            ctx.Request.Cookies.TryGetValue("waypoint_session", out var wpCookie);
-            string? hash = wpCookie is null ? null : OidcSessionResolver.HashCookie(wpCookie);
-            int? sessionRows = null; bool? matchFound = null; object? matchWithExpiry = null; DateTimeOffset? rowExpires = null;
-            if (hash is not null)
-            {
-                sessionRows = await db.UserSessions.CountAsync();
-                matchFound = await db.UserSessions.AnyAsync(s => s.CookieHash == hash);
-                var row = await db.UserSessions.FirstOrDefaultAsync(s => s.CookieHash == hash);
-                rowExpires = row?.ExpiresAt;
-                matchWithExpiry = await db.UserSessions.AsNoTracking()
-                    .Include(s => s.User)
-                    .FirstOrDefaultAsync(s => s.CookieHash == hash && s.ExpiresAt > DateTimeOffset.UtcNow) is null ? "null" : "found";
-            }
-            return Results.Ok(new
-            {
-                cookiesReceived = ctx.Request.Cookies.Keys.ToArray(),
-                waypointSessionLen = wpCookie?.Length,
-                waypointSessionHash = hash,
-                sessionRowsInDb = sessionRows,
-                hashMatchesAnyRow = matchFound,
-                rowExpiresAt = rowExpires,
-                serverUtcNow = DateTimeOffset.UtcNow,
-                resolverQueryResult = matchWithExpiry,
-                isHttps = ctx.Request.IsHttps,
-                scheme = ctx.Request.Scheme,
-                xForwardedProto = ctx.Request.Headers["X-Forwarded-Proto"].ToString(),
-            });
-        });
-
-        app.MapGet("/auth/debug-resolver", async (HttpContext ctx, IEnumerable<Waypoint.Api.Auth.IPrincipalResolver> resolvers) =>
-        {
-            var results = new List<object>();
-            foreach (var r in resolvers)
-            {
-                var p = await r.ResolveAsync(ctx, ctx.RequestAborted);
-                results.Add(new { type = r.GetType().Name, returned = p is null ? "null" : $"{p.Kind}:{p.DisplayName}" });
-            }
-            var principalFromContext = ctx.GetPrincipal();
-            return Results.Ok(new { resolvers = results, principalFromContext = principalFromContext is null ? "null" : $"{principalFromContext.Kind}:{principalFromContext.DisplayName}" });
-        });
-
-        app.MapGet("/auth/debug-setcookie", (HttpContext ctx) =>
-        {
-            ctx.Response.Cookies.Append("debug_test", "hello", new CookieOptions
-            {
-                HttpOnly = false, Secure = ctx.Request.IsHttps, SameSite = SameSiteMode.Lax, Path = "/",
-                Expires = DateTimeOffset.UtcNow.AddHours(1),
-            });
-            return Results.Ok(new { setCookie = "debug_test=hello", isHttps = ctx.Request.IsHttps });
-        });
-
         app.MapGet("/api/v1/whoami", (HttpContext ctx) =>
         {
             var principal = ctx.GetPrincipal();
