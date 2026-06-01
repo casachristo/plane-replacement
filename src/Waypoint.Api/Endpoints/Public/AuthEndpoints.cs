@@ -129,6 +129,18 @@ public static class AuthEndpoints
             });
         });
 
+        app.MapGet("/auth/debug-resolver", async (HttpContext ctx, IEnumerable<Waypoint.Api.Auth.IPrincipalResolver> resolvers) =>
+        {
+            var results = new List<object>();
+            foreach (var r in resolvers)
+            {
+                var p = await r.ResolveAsync(ctx, ctx.RequestAborted);
+                results.Add(new { type = r.GetType().Name, returned = p is null ? "null" : $"{p.Kind}:{p.DisplayName}" });
+            }
+            var principalFromContext = ctx.GetPrincipal();
+            return Results.Ok(new { resolvers = results, principalFromContext = principalFromContext is null ? "null" : $"{principalFromContext.Kind}:{principalFromContext.DisplayName}" });
+        });
+
         app.MapGet("/auth/debug-setcookie", (HttpContext ctx) =>
         {
             ctx.Response.Cookies.Append("debug_test", "hello", new CookieOptions
