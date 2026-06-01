@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Waypoint.Api;
@@ -94,12 +95,12 @@ builder.Services.AddAuthentication(opts =>
 
 // Trust X-Forwarded-* from Traefik so OIDC builds https:// redirect URIs even though
 // the pod sees HTTP internally.
-builder.Services.Configure<Microsoft.AspNetCore.HttpOverrides.ForwardedHeadersOptions>(opts =>
+builder.Services.Configure<ForwardedHeadersOptions>(opts =>
 {
-    opts.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
-                          | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
-                          | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost;
-    opts.KnownNetworks.Clear();
+    opts.ForwardedHeaders = ForwardedHeaders.XForwardedFor
+                          | ForwardedHeaders.XForwardedProto
+                          | ForwardedHeaders.XForwardedHost;
+    opts.KnownIPNetworks.Clear();
     opts.KnownProxies.Clear();
 });
 
