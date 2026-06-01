@@ -35,7 +35,11 @@ web:
     pullPolicy: IfNotPresent
   replicas: 1
   port: 3000
-  apiBase: https://waypoint.chris.box
+  # In-cluster service URL — used by Next.js server components to fetch the API
+  # without hairpinning out through Traefik. Browser requests for /api/v1/* hit
+  # Traefik directly (the IngressRoute routes them to waypoint-public), so this
+  # value only affects server-side fetches inside the SPA pod.
+  apiBase: http://waypoint-public
   resources:
     requests:
       cpu: 50m
