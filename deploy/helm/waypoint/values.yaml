@@ -26,7 +26,7 @@ api:
     clientId: waypoint
     redirectUri: https://waypoint.chris.box/auth/callback
     scopes: ["openid", "profile", "email", "groups"]
-    adminGroups: ["waypoint-admins"]
+    adminGroups: ["admins", "waypoint-admins"]
 
 web:
   image:
