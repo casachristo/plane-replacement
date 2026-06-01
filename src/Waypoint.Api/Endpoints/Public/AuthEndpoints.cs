@@ -102,11 +102,16 @@ public static class AuthEndpoints
         {
             ctx.Request.Cookies.TryGetValue("waypoint_session", out var wpCookie);
             string? hash = wpCookie is null ? null : OidcSessionResolver.HashCookie(wpCookie);
-            int? sessionRows = null; bool? matchFound = null;
+            int? sessionRows = null; bool? matchFound = null; object? matchWithExpiry = null; DateTimeOffset? rowExpires = null;
             if (hash is not null)
             {
                 sessionRows = await db.UserSessions.CountAsync();
                 matchFound = await db.UserSessions.AnyAsync(s => s.CookieHash == hash);
+                var row = await db.UserSessions.FirstOrDefaultAsync(s => s.CookieHash == hash);
+                rowExpires = row?.ExpiresAt;
+                matchWithExpiry = await db.UserSessions.AsNoTracking()
+                    .Include(s => s.User)
+                    .FirstOrDefaultAsync(s => s.CookieHash == hash && s.ExpiresAt > DateTimeOffset.UtcNow) is null ? "null" : "found";
             }
             return Results.Ok(new
             {
@@ -115,6 +120,9 @@ public static class AuthEndpoints
                 waypointSessionHash = hash,
                 sessionRowsInDb = sessionRows,
                 hashMatchesAnyRow = matchFound,
+                rowExpiresAt = rowExpires,
+                serverUtcNow = DateTimeOffset.UtcNow,
+                resolverQueryResult = matchWithExpiry,
                 isHttps = ctx.Request.IsHttps,
                 scheme = ctx.Request.Scheme,
                 xForwardedProto = ctx.Request.Headers["X-Forwarded-Proto"].ToString(),
