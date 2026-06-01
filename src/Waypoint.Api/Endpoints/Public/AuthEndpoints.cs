@@ -69,17 +69,18 @@ public static class AuthEndpoints
             db.UserSessions.Add(session);
             await db.SaveChangesAsync(ct);
 
+            // Sign out the ASP.NET Core OIDC cookie FIRST so my waypoint_session Append isn't
+            // wiped by the auth pipeline's response writer. Then set the long-lived session cookie.
+            await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
             ctx.Response.Cookies.Append(OidcSessionResolver.CookieName, cookieValue, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
+                Secure = ctx.Request.IsHttps,    // honor whatever the framework thinks of the request
                 SameSite = SameSiteMode.Lax,
                 Path = "/",
                 Expires = session.ExpiresAt,
             });
-
-            // Tear down the OIDC scratch cookie (we don't need ASP.NET Core's cookie auth after exchange)
-            await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
 
             return Results.Redirect("/");
         });
