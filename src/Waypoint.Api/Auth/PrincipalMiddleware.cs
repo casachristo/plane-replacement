@@ -1,25 +1,27 @@
 namespace Waypoint.Api.Auth;
 
 /// <summary>
-/// Runs the registered IPrincipalResolver and stashes the result in HttpContext.Items["Principal"].
-/// Downstream code reads via HttpContextExtensions.GetPrincipal().
+/// Runs every registered IPrincipalResolver in DI order and stashes the first non-null
+/// result in HttpContext.Items["Principal"]. Downstream code reads via GetPrincipal().
 /// </summary>
 public sealed class PrincipalMiddleware
 {
     public const string ItemKey = "Principal";
     private readonly RequestDelegate _next;
-    private readonly IPrincipalResolver _resolver;
 
-    public PrincipalMiddleware(RequestDelegate next, IPrincipalResolver resolver)
-    {
-        _next = next;
-        _resolver = resolver;
-    }
+    public PrincipalMiddleware(RequestDelegate next) => _next = next;
 
-    public async Task InvokeAsync(HttpContext ctx)
+    public async Task InvokeAsync(HttpContext ctx, IEnumerable<IPrincipalResolver> resolvers)
     {
-        var principal = await _resolver.ResolveAsync(ctx, ctx.RequestAborted);
-        if (principal is not null) ctx.Items[ItemKey] = principal;
+        foreach (var resolver in resolvers)
+        {
+            var principal = await resolver.ResolveAsync(ctx, ctx.RequestAborted);
+            if (principal is not null)
+            {
+                ctx.Items[ItemKey] = principal;
+                break;
+            }
+        }
         await _next(ctx);
     }
 }
