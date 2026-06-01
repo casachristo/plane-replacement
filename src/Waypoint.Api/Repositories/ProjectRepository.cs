@@ -52,4 +52,7 @@ public sealed class ProjectRepository : IProjectRepository
 
     public Task<Project?> GetBySlugAsync(string slug, CancellationToken ct) =>
         _db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Slug == slug, ct);
+
+    public async Task<IReadOnlyList<Project>> ListAsync(CancellationToken ct) =>
+        await _db.Projects.AsNoTracking().OrderBy(p => p.Name).ToListAsync(ct);
 }

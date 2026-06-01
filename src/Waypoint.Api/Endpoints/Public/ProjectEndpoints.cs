@@ -18,6 +18,12 @@ public static class ProjectEndpoints
             return Results.Created($"{prefix}/{p.Slug}", dto);
         });
 
+        group.MapGet("/", async (IProjectRepository repo, CancellationToken ct) =>
+        {
+            var list = await repo.ListAsync(ct);
+            return Results.Ok(list.Select(p => new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt)));
+        });
+
         group.MapGet("/{slug}", async (string slug, IProjectRepository repo, CancellationToken ct) =>
         {
             var p = await repo.GetBySlugAsync(slug, ct)
