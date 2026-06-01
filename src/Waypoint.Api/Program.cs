@@ -79,6 +79,12 @@ builder.Services.AddAuthentication(opts =>
     opts.ResponseType = "code";
     opts.UsePkce = true;
     opts.SaveTokens = true;
+    // Authelia's ID token doesn't include email/groups by default; fetch them from
+    // the /userinfo endpoint and merge into the ClaimsPrincipal.
+    opts.GetClaimsFromUserInfoEndpoint = true;
+    opts.ClaimActions.MapJsonKey("email", "email");
+    opts.ClaimActions.MapJsonKey("name", "name");
+    opts.ClaimActions.MapJsonKey("groups", "groups");
     // .NET 10 defaults to Pushed Authorization Requests (PAR). Authelia's per-client
     // PAR support is opt-in; we use the classic redirect flow.
     opts.PushedAuthorizationBehavior = Microsoft.AspNetCore.Authentication.OpenIdConnect.PushedAuthorizationBehavior.Disable;
