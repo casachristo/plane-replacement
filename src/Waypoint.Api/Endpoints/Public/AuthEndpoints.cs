@@ -98,17 +98,26 @@ public static class AuthEndpoints
             return Results.NoContent();
         });
 
-        app.MapGet("/auth/debug-cookies", (HttpContext ctx) =>
+        app.MapGet("/auth/debug-cookies", async (HttpContext ctx, WaypointDbContext db) =>
         {
+            ctx.Request.Cookies.TryGetValue("waypoint_session", out var wpCookie);
+            string? hash = wpCookie is null ? null : OidcSessionResolver.HashCookie(wpCookie);
+            int? sessionRows = null; bool? matchFound = null;
+            if (hash is not null)
+            {
+                sessionRows = await db.UserSessions.CountAsync();
+                matchFound = await db.UserSessions.AnyAsync(s => s.CookieHash == hash);
+            }
             return Results.Ok(new
             {
                 cookiesReceived = ctx.Request.Cookies.Keys.ToArray(),
+                waypointSessionLen = wpCookie?.Length,
+                waypointSessionHash = hash,
+                sessionRowsInDb = sessionRows,
+                hashMatchesAnyRow = matchFound,
                 isHttps = ctx.Request.IsHttps,
                 scheme = ctx.Request.Scheme,
-                host = ctx.Request.Host.Value,
                 xForwardedProto = ctx.Request.Headers["X-Forwarded-Proto"].ToString(),
-                xForwardedHost = ctx.Request.Headers["X-Forwarded-Host"].ToString(),
-                remoteIp = ctx.Connection.RemoteIpAddress?.ToString(),
             });
         });
 
