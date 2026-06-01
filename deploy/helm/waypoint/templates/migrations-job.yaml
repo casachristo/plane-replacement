@@ -1,10 +1,14 @@
+## Migration Job — pre-upgrade only (NOT pre-install). On first install, postgres
+## doesn't exist yet, so the Job would fail. Startup migration in Program.cs handles
+## install; this Job handles ongoing upgrades.
+{{- if not .Release.IsInstall }}
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: waypoint-migrate-{{ .Release.Revision }}
   namespace: {{ .Values.namespace }}
   annotations:
-    "helm.sh/hook": pre-upgrade,pre-install
+    "helm.sh/hook": pre-upgrade
     "helm.sh/hook-weight": "-5"
     "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
@@ -20,3 +24,4 @@ spec:
             - name: ConnectionStrings__Postgres
               valueFrom:
                 secretKeyRef: { name: waypoint-config, key: postgres-connection-string }
+{{- end }}

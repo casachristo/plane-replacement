@@ -90,6 +90,23 @@ builder.Services.AddAuthentication(opts =>
 var app = builder.Build();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
+// Auto-migrate on startup. The migration Job in Helm is belt-and-suspenders,
+// but the startup migration is what lets a fresh `helm install` succeed without
+// the Job racing the postgres StatefulSet.
+using (var startupScope = app.Services.CreateScope())
+{
+    var db = startupScope.ServiceProvider.GetRequiredService<WaypointDbContext>();
+    var attempts = 0;
+    while (true)
+    {
+        try { await db.Database.MigrateAsync(); break; }
+        catch (Npgsql.NpgsqlException) when (++attempts < 30)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(2));
+        }
+    }
+}
+
 app.UseAuthentication();
 app.UseMiddleware<RequestIdMiddleware>();
 app.UseMiddleware<ErrorEnvelopeMiddleware>();
