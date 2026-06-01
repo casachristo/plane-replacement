@@ -81,6 +81,8 @@ builder.Services.AddAuthentication(opts =>
     // .NET 10 defaults to Pushed Authorization Requests (PAR). Authelia's per-client
     // PAR support is opt-in; we use the classic redirect flow.
     opts.PushedAuthorizationBehavior = Microsoft.AspNetCore.Authentication.OpenIdConnect.PushedAuthorizationBehavior.Disable;
+    // Match the redirect_uri registered in Authelia (see deploy/helm + authelia.yaml).
+    opts.CallbackPath = "/auth/callback";
     opts.Scope.Clear();
     foreach (var s in oidcSection.GetValue<string[]>("Scopes") ?? ["openid", "profile", "email", "groups"])
         opts.Scope.Add(s);
@@ -90,7 +92,19 @@ builder.Services.AddAuthentication(opts =>
     };
 });
 
+// Trust X-Forwarded-* from Traefik so OIDC builds https:// redirect URIs even though
+// the pod sees HTTP internally.
+builder.Services.Configure<Microsoft.AspNetCore.HttpOverrides.ForwardedHeadersOptions>(opts =>
+{
+    opts.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                          | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
+                          | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost;
+    opts.KnownNetworks.Clear();
+    opts.KnownProxies.Clear();
+});
+
 var app = builder.Build();
+app.UseForwardedHeaders();
 if (app.Environment.IsDevelopment()) app.MapOpenApi();
 
 // Auto-migrate on startup. The migration Job in Helm is belt-and-suspenders,
