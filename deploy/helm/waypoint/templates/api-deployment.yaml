@@ -15,7 +15,18 @@ spec:
     metadata:
       labels:
         app: waypoint-api
+      annotations:
+        # Rolling-restart sentinel: bump on values changes that should force a pod recycle
+        # even when the image tag is unchanged.
+        config-hash: {{ printf "%s-%s" .Values.api.image.tag .Values.api.oidc.authority | sha256sum | trunc 12 }}
     spec:
+      volumes:
+        - name: homelab-ca
+          secret:
+            secretName: ca-cert
+            items:
+              - key: ca.crt
+                path: homelab-ca.crt
       containers:
         - name: api
           image: "{{ .Values.api.image.repository }}:{{ .Values.api.image.tag }}"
@@ -25,9 +36,21 @@ spec:
               containerPort: {{ .Values.api.publicPort }}
             - name: internal
               containerPort: {{ .Values.api.internalPort }}
+          volumeMounts:
+            - name: homelab-ca
+              mountPath: /usr/local/share/ca-certificates/homelab-ca.crt
+              subPath: homelab-ca.crt
+              readOnly: true
           env:
             - name: ASPNETCORE_ENVIRONMENT
               value: {{ .Values.api.env.ASPNETCORE_ENVIRONMENT | quote }}
+            # Point OpenSSL (which .NET HttpClient uses on Linux) at a bundle that includes
+            # both the system CAs and the homelab CA. The runtime image already has system
+            # CAs at /etc/ssl/certs; we append the homelab cert via SSL_CERT_FILE pointing at
+            # a script-built bundle, OR simpler — set SSL_CERT_FILE to the homelab cert and
+            # rely on the runtime to also load system trust. For Alpine + .NET, the cleanest
+            # approach is mounting the cert into the system CA directory and running
+            # update-ca-certificates at startup. The Dockerfile handles that.
             - name: ConnectionStrings__Postgres
               valueFrom:
                 secretKeyRef: { name: waypoint-config, key: postgres-connection-string }
