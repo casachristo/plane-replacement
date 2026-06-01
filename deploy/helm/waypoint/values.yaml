@@ -5,7 +5,7 @@ namespace: media
 
 api:
   image:
-    repository: gitea.chris.box/chris/waypoint-api
+    repository: 10.43.36.84:3000/chris/waypoint-api
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   replicas: 1
@@ -30,7 +30,7 @@ api:
 
 web:
   image:
-    repository: gitea.chris.box/chris/waypoint-web
+    repository: 10.43.36.84:3000/chris/waypoint-web
     tag: "0.1.0"
     pullPolicy: IfNotPresent
   replicas: 1
@@ -54,7 +54,7 @@ postgres:
 
 ingress:
   host: waypoint.chris.box
-  tlsSecretName: waypoint-tls
+  tlsSecretName: media-tls
 
 backup:
   enabled: true
