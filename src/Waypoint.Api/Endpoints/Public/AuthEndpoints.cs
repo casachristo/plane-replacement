@@ -100,8 +100,10 @@ public static class AuthEndpoints
 
         app.MapGet("/api/v1/whoami", (HttpContext ctx) =>
         {
-            var principal = ctx.GetPrincipal();
-            if (principal is null) return Results.Unauthorized();
+            // AuthGuard.RequireAuth throws UnauthorizedException → 401 with the standard JSON
+            // envelope via ErrorEnvelopeMiddleware. Results.Unauthorized() would skip the
+            // envelope and break shared 401-handling clients.
+            var principal = Waypoint.Api.Auth.AuthGuard.RequireAuth(ctx);
             return Results.Ok(new
             {
                 kind = principal.Kind.ToString(),

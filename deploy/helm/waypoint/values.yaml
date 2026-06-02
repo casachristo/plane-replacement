@@ -7,7 +7,10 @@ api:
   image:
     repository: 10.43.36.84:3000/chris/waypoint-api
     tag: "0.1.0"
-    pullPolicy: IfNotPresent
+    # Always pull — tag 0.1.0 is mutable during development, and IfNotPresent would silently
+    # run a stale cached image on rollout. Switch to IfNotPresent once tags become immutable
+    # (content-addressable, e.g. 0.1.0-<git-sha>).
+    pullPolicy: Always
   replicas: 1
   publicPort: 8080
   internalPort: 8081
@@ -32,7 +35,10 @@ web:
   image:
     repository: 10.43.36.84:3000/chris/waypoint-web
     tag: "0.1.0"
-    pullPolicy: IfNotPresent
+    # Always pull — tag 0.1.0 is mutable during development, and IfNotPresent would silently
+    # run a stale cached image on rollout. Switch to IfNotPresent once tags become immutable
+    # (content-addressable, e.g. 0.1.0-<git-sha>).
+    pullPolicy: Always
   replicas: 1
   port: 3000
   # In-cluster service URL — used by Next.js server components to fetch the API

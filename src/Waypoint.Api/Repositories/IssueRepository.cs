@@ -24,12 +24,29 @@ public sealed class IssueRepository : IIssueRepository
             """;
         await _db.Database.ExecuteSqlRawAsync(ensure, ct);
 
+        // Don't ad-hoc open the EF connection — that bypasses connection pooling and can leak
+        // open connections outside EF's lifetime management. Use ExecuteSqlRawAsync via a
+        // dynamic-parameter wrapper (EF treats the SQL as a scalar query via FromSqlRaw on a
+        // keyless type, but for a single value we use a tiny scratch table). Cleanest path:
+        // run nextval through the same DDL channel we used to ensure the sequence.
         var conn = _db.Database.GetDbConnection();
-        if (conn.State != System.Data.ConnectionState.Open) await conn.OpenAsync(ct);
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"SELECT nextval('{seqName}')";
-        var result = await cmd.ExecuteScalarAsync(ct);
-        return Convert.ToInt32((long)result!);
+        var opened = false;
+        if (conn.State != System.Data.ConnectionState.Open)
+        {
+            await conn.OpenAsync(ct);
+            opened = true;
+        }
+        try
+        {
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = $"SELECT nextval('{seqName}')";
+            var result = await cmd.ExecuteScalarAsync(ct);
+            return Convert.ToInt32((long)result!);
+        }
+        finally
+        {
+            if (opened) await conn.CloseAsync();
+        }
     }
 
     public async Task<Issue> CreateAsync(Guid projectId, string title, string descriptionMd, Guid? issueTypeId, CancellationToken ct)

@@ -67,11 +67,5 @@ public static class WebhookEndpoints
         });
     }
 
-    private static void RequireAdmin(HttpContext ctx)
-    {
-        var principal = ctx.GetPrincipal()
-            ?? throw new NotFoundException("unauthenticated", "Sign in required.");
-        if (!principal.Scopes.Contains("admin"))
-            throw new ValidationException("missing_scope", "Admin scope required.");
-    }
+    private static void RequireAdmin(HttpContext ctx) => Waypoint.Api.Auth.AuthGuard.RequireScope(ctx, "admin");
 }
