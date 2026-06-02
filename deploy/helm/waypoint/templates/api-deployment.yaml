@@ -68,11 +68,11 @@ spec:
               value: {{ $g | quote }}
             {{- end }}
           readinessProbe:
-            httpGet: { path: /healthz/live, port: public }
+            httpGet: { path: /healthz/ready, port: public }   # actually checks DB
             initialDelaySeconds: 5
             periodSeconds: 5
           livenessProbe:
-            httpGet: { path: /healthz/live, port: public }
+            httpGet: { path: /healthz/live, port: public }    # cheap — only fails if process is dead
             periodSeconds: 30
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}

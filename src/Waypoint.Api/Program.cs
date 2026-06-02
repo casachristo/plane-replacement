@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OpenTelemetry.Trace;
 using Waypoint.Api;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Endpoints.InternalApi;
@@ -48,6 +49,7 @@ builder.Services.AddDbContext<WaypointDbContext>(opts =>
                    ?? "Host=chris.box;Port=15432;Database=waypoint;Username=waypoint;Password=waypoint")
         .UseSnakeCaseNamingConvention());
 
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<IIssueRepository, IssueRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
@@ -59,6 +61,17 @@ builder.Services.AddHttpClient("waypoint-webhooks", client =>
     client.Timeout = TimeSpan.FromSeconds(15);
 });
 builder.Services.AddHostedService<Waypoint.Api.Webhooks.WebhookDispatcher>();
+
+// OpenTelemetry — traces only (metrics already exposed via WaypointMetrics + Prometheus).
+// OTLP exporter ships to whatever the OTEL_EXPORTER_OTLP_ENDPOINT env var points at;
+// when unset, the exporter is a no-op (no warning spam, just zero export).
+builder.Services.AddOpenTelemetry().WithTracing(t => t
+    .AddSource("Waypoint.Api")
+    .AddAspNetCoreInstrumentation()
+    .AddHttpClientInstrumentation()
+    .AddEntityFrameworkCoreInstrumentation()
+    .AddOtlpExporter()
+);
 
 // OIDC + Cookie authentication: used only for the /auth/* login flow. Once we have a
 // waypoint_session cookie, the OidcSessionResolver takes over and we no longer rely on
@@ -147,10 +160,27 @@ app.UseMiddleware<PrincipalMiddleware>();
 app.UseMiddleware<AuditLogMiddleware>();
 
 app.MapGet("/healthz/live", () => Results.Ok(new { status = "ok" }));
+// Readiness: the pod can't serve requests if Postgres is unreachable, so this is the
+// one K8s should target for `readinessProbe`. /healthz/live stays cheap for liveness.
+app.MapGet("/healthz/ready", async (WaypointDbContext db, CancellationToken ct) =>
+{
+    try
+    {
+        return await db.Database.CanConnectAsync(ct)
+            ? Results.Ok(new { status = "ready" })
+            : Results.Json(new { status = "db_unreachable" }, statusCode: 503);
+    }
+    catch (Exception ex)
+    {
+        return Results.Json(new { status = "db_error", message = ex.GetType().Name }, statusCode: 503);
+    }
+});
 
 app.MapAuthEndpoints();
 app.MapWebhookEndpoints();
 app.MapAdminEndpoints();
+app.MapSearchEndpoints("/api/v1");
+app.MapSearchEndpoints("/internal/v1");
 
 // Public surface (:8080)
 app.MapProjectEndpoints("/api/v1/projects");

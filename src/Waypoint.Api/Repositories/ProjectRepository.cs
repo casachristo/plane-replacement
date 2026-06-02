@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Npgsql;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
@@ -9,7 +10,9 @@ namespace Waypoint.Api.Repositories;
 public sealed class ProjectRepository : IProjectRepository
 {
     private readonly WaypointDbContext _db;
-    public ProjectRepository(WaypointDbContext db) => _db = db;
+    private readonly IMemoryCache _cache;
+    private static readonly TimeSpan SlugCacheTtl = TimeSpan.FromMinutes(5);
+    public ProjectRepository(WaypointDbContext db, IMemoryCache cache) { _db = db; _cache = cache; }
 
     public async Task<Project> CreateAsync(string slug, string name, string identifier, CancellationToken ct)
     {
@@ -50,8 +53,20 @@ public sealed class ProjectRepository : IProjectRepository
         }
     }
 
-    public Task<Project?> GetBySlugAsync(string slug, CancellationToken ct) =>
-        _db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Slug == slug, ct);
+    public async Task<Project?> GetBySlugAsync(string slug, CancellationToken ct)
+    {
+        // Slug → Project lookup is on the hot path of every issue/comment endpoint. Projects
+        // change rarely (created once, almost never renamed), so a short TTL cache eliminates
+        // the DB roundtrip without staleness risk that matters.
+        var key = $"proj:slug:{slug}";
+        if (_cache.TryGetValue<Project>(key, out var cached)) return cached;
+        var project = await _db.Projects.AsNoTracking().FirstOrDefaultAsync(p => p.Slug == slug, ct);
+        if (project is not null)
+        {
+            _cache.Set(key, project, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = SlugCacheTtl });
+        }
+        return project;
+    }
 
     public async Task<IReadOnlyList<Project>> ListAsync(CancellationToken ct) =>
         await _db.Projects.AsNoTracking().OrderBy(p => p.Name).ToListAsync(ct);
