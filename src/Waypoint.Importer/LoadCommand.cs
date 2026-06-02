@@ -140,6 +140,24 @@ public static class LoadCommand
                     await db.SaveChangesAsync();
                 }
             }
+
+            // Fast-forward the per-project issue sequence so the first API-created issue after
+            // import doesn't collide with the imported sequence_ids. IssueRepository creates
+            // seq_issues_<projectId:N> lazily; if it doesn't exist yet, we create it; if it
+            // does, we RESTART it past the max imported seq.
+            var maxSeq = await db.Issues.Where(i => i.ProjectId == project.Id)
+                .Select(i => (int?)i.SequenceId).MaxAsync() ?? 0;
+            // Sequence identifiers can't be parameterized in Postgres; values are a Guid
+            // hex string ({:N}) and an int — no untrusted input, so the EF1002 SQL-injection
+            // warning is a false positive here.
+            var seqName = $"seq_issues_{project.Id:N}";
+            var nextSeq = maxSeq + 1;
+#pragma warning disable EF1002
+            await db.Database.ExecuteSqlRawAsync(
+                $"CREATE SEQUENCE IF NOT EXISTS {seqName} START {nextSeq};");
+            await db.Database.ExecuteSqlRawAsync(
+                $"ALTER SEQUENCE {seqName} RESTART WITH {nextSeq};");
+#pragma warning restore EF1002
         }
 
         if (dryRun) { await tx.RollbackAsync(); Console.Error.WriteLine("[DRY-RUN] rolled back."); }

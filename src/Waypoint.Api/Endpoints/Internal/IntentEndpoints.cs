@@ -17,10 +17,11 @@ public static class IntentEndpoints
             IProjectRepository projects, IIntentRepository intents,
             HttpContext ctx, CancellationToken ct) =>
         {
+            var principal = AuthGuard.RequireAuth(ctx);
+            if (principal.Kind != PrincipalKind.InternalService)
+                throw new ValidationException("internal_service_required", "Intent endpoints accept service tokens only.");
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var principal = ctx.GetPrincipal()
-                ?? throw new NotFoundException("unauthenticated", "No principal resolved.");
             if (!Guid.TryParse(principal.Id, out var tokenId))
                 throw new ValidationException("invalid_principal", "Internal principal must have a token id.");
 
@@ -31,8 +32,11 @@ public static class IntentEndpoints
         // DELETE with linked_issue_seq as query param — DELETE bodies don't infer in minimal APIs.
         app.MapDelete("/internal/v1/intents/{intentId:guid}",
             async (Guid intentId, int? linkedIssueSeq,
-                IIntentRepository intents, CancellationToken ct) =>
+                IIntentRepository intents, HttpContext ctx, CancellationToken ct) =>
             {
+                var principal = AuthGuard.RequireAuth(ctx);
+                if (principal.Kind != PrincipalKind.InternalService)
+                    throw new ValidationException("internal_service_required", "Intent endpoints accept service tokens only.");
                 await intents.ReleaseAsync(intentId, linkedIssueSeq, ct);
                 return Results.NoContent();
             });

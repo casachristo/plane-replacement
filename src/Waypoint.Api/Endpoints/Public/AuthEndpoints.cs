@@ -76,7 +76,7 @@ public static class AuthEndpoints
             ctx.Response.Cookies.Append(OidcSessionResolver.CookieName, cookieValue, new CookieOptions
             {
                 HttpOnly = true,
-                Secure = ctx.Request.IsHttps,    // honor whatever the framework thinks of the request
+                Secure = true,                   // Traefik fronts HTTPS; cookie must never travel plaintext
                 SameSite = SameSiteMode.Lax,
                 Path = "/",
                 Expires = session.ExpiresAt,

@@ -110,6 +110,11 @@ builder.Services.Configure<ForwardedHeadersOptions>(opts =>
                           | ForwardedHeaders.XForwardedHost;
     opts.KnownIPNetworks.Clear();
     opts.KnownProxies.Clear();
+    // Trust the K3s pod CIDR so X-Forwarded-* from Traefik is actually applied.
+    // Clearing without re-adding (the prior bug) silently dropped all forwarded
+    // headers, leaving Request.IsHttps=false inside the pod.
+    opts.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("10.42.0.0"), 16));
+    opts.KnownIPNetworks.Add(new System.Net.IPNetwork(System.Net.IPAddress.Parse("10.43.0.0"), 16));
 });
 
 var app = builder.Build();

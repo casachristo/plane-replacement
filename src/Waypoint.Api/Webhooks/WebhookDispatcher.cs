@@ -98,7 +98,11 @@ public sealed class WebhookDispatcher : BackgroundService
 
     private static void ScheduleRetryOrDeadLetter(Domain.Entities.WebhookDelivery delivery)
     {
-        if (delivery.AttemptN >= Backoff.Length)
+        // AttemptN was just incremented by the caller, so AttemptN=1 means we just
+        // finished the first attempt and want Backoff[0] (1 minute) for the next try.
+        // After Backoff.Length attempts have failed, dead-letter.
+        var nextIdx = delivery.AttemptN - 1;
+        if (nextIdx >= Backoff.Length)
         {
             delivery.Status = "dead-letter";
             delivery.NextAttemptAt = null;
@@ -106,7 +110,7 @@ public sealed class WebhookDispatcher : BackgroundService
         else
         {
             delivery.Status = "pending";
-            delivery.NextAttemptAt = DateTimeOffset.UtcNow + Backoff[delivery.AttemptN];
+            delivery.NextAttemptAt = DateTimeOffset.UtcNow + Backoff[nextIdx];
         }
     }
 }

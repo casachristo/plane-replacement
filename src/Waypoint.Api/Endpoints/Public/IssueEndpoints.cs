@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Waypoint.Api.Auth;
 using Waypoint.Api.Pagination;
 using Waypoint.Api.Repositories;
 using Waypoint.Contracts;
@@ -14,8 +15,9 @@ public static class IssueEndpoints
         var group = app.MapGroup($"{projectsPrefix}/{{slug}}/issues");
 
         group.MapPost("/", async (string slug, CreateIssueRequest req,
-            IProjectRepository projects, IIssueRepository issues, CancellationToken ct) =>
+            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
+            AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var issue = await issues.CreateAsync(project.Id, req.Title, req.DescriptionMd, req.IssueTypeId, ct);
@@ -24,8 +26,9 @@ public static class IssueEndpoints
         });
 
         group.MapGet("/{seq:int}", async (string slug, int seq,
-            IProjectRepository projects, IIssueRepository issues, CancellationToken ct) =>
+            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
+            AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var issue = await issues.GetBySequenceAsync(project.Id, seq, ct)
@@ -34,8 +37,9 @@ public static class IssueEndpoints
         });
 
         group.MapPatch("/{seq:int}", async (string slug, int seq, UpdateIssueRequest req,
-            IProjectRepository projects, IIssueRepository issues, CancellationToken ct) =>
+            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
+            AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var updated = await issues.UpdateAsync(project.Id, seq, req.Title, req.DescriptionMd, req.Priority, ct);
@@ -43,8 +47,9 @@ public static class IssueEndpoints
         });
 
         group.MapPost("/{seq:int}/transitions", async (string slug, int seq, TransitionIssueRequest req,
-            IProjectRepository projects, IIssueRepository issues, CancellationToken ct) =>
+            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
+            AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var updated = await issues.TransitionAsync(project.Id, seq, req.ToStateId, ct);
@@ -52,8 +57,9 @@ public static class IssueEndpoints
         });
 
         group.MapGet("/", async (string slug, int? limit, string? cursor,
-            IProjectRepository projects, IIssueRepository issues, CancellationToken ct) =>
+            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
+            AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var pageSize = limit ?? 50;
@@ -69,8 +75,9 @@ public static class IssueEndpoints
         });
 
         group.MapGet("/{seq:int}/activity", async (string slug, int seq,
-            IProjectRepository projects, WaypointDbContext db, CancellationToken ct) =>
+            IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
+            AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var issue = await db.Issues.FirstOrDefaultAsync(i => i.ProjectId == project.Id && i.SequenceId == seq, ct)
