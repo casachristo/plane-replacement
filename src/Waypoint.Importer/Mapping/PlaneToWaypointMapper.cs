@@ -75,9 +75,18 @@ public static class PlaneToWaypointMapper
             IssueId = issueId,
             ActorType = ActorType.System,
             Verb = $"legacy_plane_{verb ?? "unknown"}{(field is not null ? "_" + field : "")}",
-            BeforeJson = a.TryGetProperty("old_value", out var ov) && ov.ValueKind != JsonValueKind.Null ? ov.ToString() : null,
-            AfterJson = a.TryGetProperty("new_value", out var nv) && nv.ValueKind != JsonValueKind.Null ? nv.ToString() : null,
+            // GetRawText() preserves valid JSON shape — strings come back quoted ("Done").
+            // JsonElement.ToString() on a string returns the bare value, which Postgres
+            // rejects when inserting into jsonb columns.
+            BeforeJson = AsJsonOrNull(a, "old_value"),
+            AfterJson = AsJsonOrNull(a, "new_value"),
         };
+    }
+
+    private static string? AsJsonOrNull(JsonElement parent, string property)
+    {
+        if (!parent.TryGetProperty(property, out var prop) || prop.ValueKind == JsonValueKind.Null) return null;
+        return prop.GetRawText();
     }
 
     /// <summary>Detects label hacks: name starts with "type:", "epic:" → returns (kind, stripped-name).</summary>
