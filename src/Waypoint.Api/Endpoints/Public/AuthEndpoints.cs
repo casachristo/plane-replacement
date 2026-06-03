@@ -21,9 +21,16 @@ public static class AuthEndpoints
     public static void MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/auth/login", (HttpContext ctx) =>
-            Results.Challenge(
+        {
+            // If the caller already has a valid waypoint_session, short-circuit straight to
+            // the home page. Without this, hitting /auth/login while logged in triggers a fresh
+            // OIDC challenge and inserts a duplicate UserSession row — every refresh of the
+            // login link leaked a session over time.
+            if (ctx.GetPrincipal() is { Kind: PrincipalKind.Human }) return Results.Redirect("/");
+            return Results.Challenge(
                 new AuthenticationProperties { RedirectUri = "/auth/post-login" },
-                [OpenIdConnectDefaults.AuthenticationScheme]));
+                [OpenIdConnectDefaults.AuthenticationScheme]);
+        });
 
         app.MapGet("/auth/post-login", async (HttpContext ctx, WaypointDbContext db,
             IOptions<OidcOptions> oidcOpts, CancellationToken ct) =>

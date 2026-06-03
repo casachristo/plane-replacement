@@ -70,4 +70,6 @@ public sealed class ProjectRepository : IProjectRepository
 
     public async Task<IReadOnlyList<Project>> ListAsync(CancellationToken ct) =>
         await _db.Projects.AsNoTracking().OrderBy(p => p.Name).ToListAsync(ct);
+
+    public void InvalidateSlugCache(string slug) => _cache.Remove($"proj:slug:{slug}");
 }
