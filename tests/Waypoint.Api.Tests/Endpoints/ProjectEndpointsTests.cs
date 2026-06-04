@@ -61,4 +61,24 @@ public class ProjectEndpointsTests : IClassFixture<PostgresFixture>
         var err = await second.Content.ReadFromJsonAsync<ErrorResponse>();
         err!.Error.Code.Should().Be("project_slug_exists");
     }
+
+    [Fact]
+    public async Task GET_states_returns_seeded_workflow_in_sort_order()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync("/api/v1/projects",
+            new CreateProjectRequest("kb-proj", "Kanban Project", "KB1"));
+
+        var resp = await client.GetAsync("/api/v1/projects/kb-proj/states");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var states = await resp.Content.ReadFromJsonAsync<List<StateDto>>();
+        states.Should().NotBeNull();
+        states!.Should().NotBeEmpty();
+        states!.Should().BeInAscendingOrder(s => s.SortOrder);
+        // Every project gets at least a Backlog state seeded on creation.
+        states!.Select(s => s.Group).Should().Contain("Backlog");
+    }
 }

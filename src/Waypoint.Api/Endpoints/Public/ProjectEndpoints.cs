@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Repositories;
 using Waypoint.Contracts;
@@ -33,6 +34,20 @@ public static class ProjectEndpoints
             var p = await repo.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             return Results.Ok(new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt));
+        });
+
+        group.MapGet("/{slug}/states", async (string slug,
+            IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+        {
+            AuthGuard.RequireAuth(ctx);
+            var project = await projects.GetBySlugAsync(slug, ct)
+                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
+            var states = await db.States.AsNoTracking()
+                .Where(s => s.ProjectId == project.Id)
+                .OrderBy(s => s.SortOrder)
+                .Select(s => new StateDto(s.Id, s.Name, s.Group.ToString(), s.Color, s.SortOrder, s.IsDefault))
+                .ToListAsync(ct);
+            return Results.Ok(states);
         });
     }
 }

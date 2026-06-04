@@ -34,6 +34,15 @@ export type Issue = {
   updatedAt: string;
 };
 
+export type State = {
+  id: string;
+  name: string;
+  group: 'Backlog' | 'Unstarted' | 'Started' | 'Completed' | 'Cancelled';
+  color: string;
+  sortOrder: number;
+  isDefault: boolean;
+};
+
 export type Paged<T> = { data: T[]; nextCursor: string | null; totalCount: number };
 
 export type Me = {
@@ -59,12 +68,10 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null>
 }
 
 export async function whoami(): Promise<Me | null> {
-  // 401 → null = not signed in (renders the Sign-in link in the header).
   return fetchJson<Me>('/api/v1/whoami');
 }
 
 export async function listProjects(): Promise<Project[] | null> {
-  // Public endpoint, returns the projects the human can see.
   return fetchJson<Project[]>('/api/v1/projects');
 }
 
@@ -74,4 +81,8 @@ export async function getProject(slug: string): Promise<Project | null> {
 
 export async function listIssues(slug: string): Promise<Paged<Issue> | null> {
   return fetchJson<Paged<Issue>>(`/api/v1/projects/${slug}/issues?limit=50`);
+}
+
+export async function listStates(slug: string): Promise<State[] | null> {
+  return fetchJson<State[]>(`/api/v1/projects/${slug}/states`);
 }
