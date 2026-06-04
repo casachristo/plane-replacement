@@ -1,12 +1,16 @@
-import { getProject, listIssues } from '@/lib/api';
+import { getProject, listIssues, whoami } from '@/lib/api';
+import { CreateIssueButton } from '@/components/CreateIssueButton';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProjectPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const project = await getProject(slug);
+  const [project, page, me] = await Promise.all([
+    getProject(slug),
+    listIssues(slug),
+    whoami(),
+  ]);
   if (!project) return <div>Project not found or sign-in required.</div>;
-  const page = await listIssues(slug);
 
   return (
     <div className="space-y-6">
@@ -14,8 +18,11 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
         <div className="text-xs text-[var(--muted)]">{project.identifier}</div>
         <h1 className="text-2xl font-semibold">{project.name}</h1>
       </div>
-      <section>
-        <h2 className="text-lg font-medium mb-3">Issues</h2>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-medium">Issues</h2>
+          {me && <CreateIssueButton projectSlug={slug} />}
+        </div>
         {!page || page.data.length === 0 ? (
           <p className="text-[var(--muted)]">No issues yet.</p>
         ) : (
