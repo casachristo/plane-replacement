@@ -154,4 +154,20 @@ public class AcceptanceCriterionEndpointsTests : IClassFixture<PostgresFixture>
         var resp = await client.GetAsync("/api/v1/projects/ac9/issues/9999/acceptance-criteria");
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Issue_GET_includes_AC_inline_in_position_order()
+    {
+        using var client = await ProjectWithOneIssue(_pg, "acin", "ACIN");
+        await client.PostAsJsonAsync("/api/v1/projects/acin/issues/1/acceptance-criteria",
+            new CreateAcceptanceCriterionRequest("alpha"));
+        await client.PostAsJsonAsync("/api/v1/projects/acin/issues/1/acceptance-criteria",
+            new CreateAcceptanceCriterionRequest("beta"));
+
+        var issue = await (await client.GetAsync("/api/v1/projects/acin/issues/1"))
+            .Content.ReadFromJsonAsync<IssueDto>();
+        issue!.AcceptanceCriteria.Should().HaveCount(2);
+        issue.AcceptanceCriteria.Select(a => a.Text).Should().Equal("alpha", "beta");
+        issue.AcceptanceCriteria.All(a => !a.Checked).Should().BeTrue();
+    }
 }

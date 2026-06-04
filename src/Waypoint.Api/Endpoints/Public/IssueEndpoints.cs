@@ -26,14 +26,24 @@ public static class IssueEndpoints
         });
 
         group.MapGet("/{seq:int}", async (string slug, int seq,
-            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
+            IProjectRepository projects, IIssueRepository issues, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var issue = await issues.GetBySequenceAsync(project.Id, seq, ct)
                 ?? throw new NotFoundException("issue_not_found", $"Issue {project.Identifier}-{seq} not found.");
-            return Results.Ok(ToDto(issue));
+            var ac = await db.Set<AcceptanceCriterion>().AsNoTracking()
+                .Where(a => a.IssueId == issue.Id)
+                .OrderBy(a => a.Position)
+                .ToListAsync(ct);
+            var acDtos = ac.Select(a => new AcceptanceCriterionDto(
+                a.Id, a.Position, a.Text, a.Checked, a.CheckedAt,
+                a.CheckedByActorType?.ToString(),
+                a.CheckedByActorId,
+                a.CheckedByActorLabel,
+                a.CreatedAt, a.UpdatedAt)).ToList();
+            return Results.Ok(ToDto(issue) with { AcceptanceCriteria = acDtos });
         });
 
         group.MapPatch("/{seq:int}", async (string slug, int seq, UpdateIssueRequest req,

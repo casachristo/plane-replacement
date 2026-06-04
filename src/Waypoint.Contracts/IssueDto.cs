@@ -11,4 +11,10 @@ public sealed record IssueDto(
     string IssueTypeName,
     int Priority,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt)
+{
+    // Populated by GET /api/v1/projects/{slug}/issues/{seq}; empty array on POST/PATCH/transition
+    // (no separate fetch — keeps those handlers' hot path lean). Use the dedicated
+    // /acceptance-criteria endpoints for CRUD on AC items.
+    public IReadOnlyList<AcceptanceCriterionDto> AcceptanceCriteria { get; init; } = [];
+}
