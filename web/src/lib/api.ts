@@ -36,6 +36,13 @@ export type Issue = {
 
 export type Paged<T> = { data: T[]; nextCursor: string | null; totalCount: number };
 
+export type Me = {
+  kind: 'Human' | 'InternalService';
+  id: string;
+  displayName: string;
+  scopes: string[];
+};
+
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null> {
   const url = isServer() ? `${SERVER_API_BASE}${path}` : path;
   const headers: Record<string, string> = { 'Accept': 'application/json', ...(init?.headers as Record<string, string> ?? {}) };
@@ -49,6 +56,11 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null>
   if (res.status === 401 || res.status === 404) return null;
   if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
   return (await res.json()) as T;
+}
+
+export async function whoami(): Promise<Me | null> {
+  // 401 → null = not signed in (renders the Sign-in link in the header).
+  return fetchJson<Me>('/api/v1/whoami');
 }
 
 export async function listProjects(): Promise<Project[] | null> {
