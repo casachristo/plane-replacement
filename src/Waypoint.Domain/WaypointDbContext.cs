@@ -27,6 +27,7 @@ public class WaypointDbContext(DbContextOptions<WaypointDbContext> options) : Db
     public DbSet<UserSession> UserSessions => Set<UserSession>();
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
+    public DbSet<AcceptanceCriterion> AcceptanceCriteria => Set<AcceptanceCriterion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
