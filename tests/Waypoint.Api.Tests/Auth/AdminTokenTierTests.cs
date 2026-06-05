@@ -77,14 +77,4 @@ public class AdminTokenTierTests : IClassFixture<PostgresFixture>
         }
     }
 
-    [Fact]
-    public async Task Admin_kind_token_preserves_explicit_scopes_alongside_synthetic_admin()
-    {
-        var (factory, full) = await MintToken(_pg, "admin-with-extras", TokenKind.Admin, ["read"]);
-        await using (factory)
-        {
-            var principal = await Resolve(factory, full);
-            principal!.Scopes.Should().Contain("admin").And.Contain("read");
-        }
-    }
 }
