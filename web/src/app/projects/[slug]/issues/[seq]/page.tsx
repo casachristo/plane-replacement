@@ -1,5 +1,6 @@
-import { getProject, getIssue, whoami } from '@/lib/api';
+import { getProject, getIssue, listStates, whoami } from '@/lib/api';
 import { AcceptanceCriteriaPanel } from '@/components/AcceptanceCriteriaPanel';
+import { TransitionMenu } from '@/components/TransitionMenu';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,9 +13,10 @@ export default async function IssuePage({
   const seq = Number(seqStr);
   if (!Number.isFinite(seq)) return <div>Invalid issue number.</div>;
 
-  const [project, issue, me] = await Promise.all([
+  const [project, issue, states, me] = await Promise.all([
     getProject(slug),
     getIssue(slug, seq),
+    listStates(slug),
     whoami(),
   ]);
   if (!project) return <div>Project not found or sign-in required.</div>;
@@ -53,6 +55,15 @@ export default async function IssuePage({
         initial={issue.acceptanceCriteria ?? []}
         canEdit={me !== null}
       />
+
+      {me && states && states.length > 1 && (
+        <TransitionMenu
+          projectSlug={slug}
+          issueSeq={seq}
+          currentStateId={issue.stateId}
+          states={states}
+        />
+      )}
     </div>
   );
 }
