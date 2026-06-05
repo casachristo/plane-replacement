@@ -22,8 +22,12 @@ public sealed class ServiceBearerResolver : IPrincipalResolver
         if (parts.Length != 3 || parts[0] != "wpt" || parts[1].Length != 8) return null;
         var prefix = parts[1];
 
+        // WAY-5: both Service AND Admin tiers are accepted here. Admin tokens get a
+        // synthetic "admin" scope so RequireScope("admin") works without per-token
+        // scope plumbing — the tier IS the policy on admin endpoints.
         var candidates = await _db.ApiTokens.AsNoTracking()
-            .Where(t => t.Prefix == prefix && t.RevokedAt == null && t.Kind == TokenKind.Service)
+            .Where(t => t.Prefix == prefix && t.RevokedAt == null
+                        && (t.Kind == TokenKind.Service || t.Kind == TokenKind.Admin))
             .ToListAsync(ct);
 
         foreach (var token in candidates)
@@ -32,11 +36,16 @@ public sealed class ServiceBearerResolver : IPrincipalResolver
             {
                 ctx.Request.Headers.TryGetValue("X-On-Behalf-Of", out var passthroughId);
                 ctx.Request.Headers.TryGetValue("X-On-Behalf-Of-Label", out var passthroughLabel);
+
+                var scopes = token.Kind == TokenKind.Admin
+                    ? token.Scopes.Append("admin").Distinct(StringComparer.Ordinal).ToArray()
+                    : token.Scopes;
+
                 return new Principal(
                     Kind: PrincipalKind.InternalService,
                     Id: token.Id.ToString(),
                     DisplayName: token.Name,
-                    Scopes: token.Scopes,
+                    Scopes: scopes,
                     PassthroughActorId: string.IsNullOrEmpty(passthroughId) ? null : passthroughId.ToString(),
                     PassthroughActorLabel: string.IsNullOrEmpty(passthroughLabel) ? null : passthroughLabel.ToString());
             }
