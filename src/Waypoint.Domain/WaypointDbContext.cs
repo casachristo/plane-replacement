@@ -28,6 +28,7 @@ public class WaypointDbContext(DbContextOptions<WaypointDbContext> options) : Db
     public DbSet<WebhookSubscription> WebhookSubscriptions => Set<WebhookSubscription>();
     public DbSet<WebhookDelivery> WebhookDeliveries => Set<WebhookDelivery>();
     public DbSet<AcceptanceCriterion> AcceptanceCriteria => Set<AcceptanceCriterion>();
+    public DbSet<GateOverrideEvent> GateOverrideEvents => Set<GateOverrideEvent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

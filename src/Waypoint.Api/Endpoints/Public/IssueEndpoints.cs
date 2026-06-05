@@ -62,7 +62,10 @@ public static class IssueEndpoints
             AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var updated = await issues.TransitionAsync(project.Id, seq, req.ToStateId, req.Force, ct);
+            if (req.Force && string.IsNullOrWhiteSpace(req.BypassReason))
+                throw new ValidationException("bypass_reason_required", "force=true requires a non-empty BypassReason.");
+            var principal = ctx.GetPrincipal();
+            var updated = await issues.TransitionAsync(project.Id, seq, req.ToStateId, req.Force, req.BypassReason, principal, ct);
             return Results.Ok(ToDto(updated));
         });
 

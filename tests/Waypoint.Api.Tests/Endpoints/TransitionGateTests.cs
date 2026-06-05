@@ -129,4 +129,113 @@ public class TransitionGateTests : IClassFixture<PostgresFixture>
             new TransitionIssueRequest(doneId));
         resp.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task Force_true_without_BypassReason_returns_422()
+    {
+        var (client, _, seq, doneId) = await SetupProjectIssueAndDone(_pg, "gate5", "GT5");
+
+        var resp = await client.PostAsJsonAsync($"/api/v1/projects/gate5/issues/{seq}/transitions",
+            new TransitionIssueRequest(doneId, Force: true, BypassReason: "   "));
+        ((int)resp.StatusCode).Should().Be(422);
+        var err = await resp.Content.ReadFromJsonAsync<ErrorResponse>();
+        err!.Error.Code.Should().Be("bypass_reason_required");
+    }
+
+    [Fact]
+    public async Task Force_true_bypassing_real_gate_writes_GateOverrideEvent()
+    {
+        var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync("/api/v1/projects",
+            new CreateProjectRequest("gate6", "P gate6", "GT6"));
+
+        Guid doneId, issueDbId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
+            var project = db.Projects.Single(p => p.Slug == "gate6");
+            var done = new State
+            {
+                ProjectId = project.Id, Name = "Done",
+                Group = StateGroup.Completed, Color = "#22c55e", SortOrder = 1,
+            };
+            db.States.Add(done); db.SaveChanges();
+            doneId = done.Id;
+            var workflow = db.Workflows.Single(w => w.ProjectId == project.Id);
+            db.WorkflowTransitions.Add(new WorkflowTransition
+            {
+                WorkflowId = workflow.Id,
+                FromStateId = project.DefaultStateId!.Value,
+                ToStateId = done.Id,
+            });
+            db.SaveChanges();
+        }
+        var created = await (await client.PostAsJsonAsync("/api/v1/projects/gate6/issues",
+            new CreateIssueRequest("X", "y"))).Content.ReadFromJsonAsync<IssueDto>();
+        issueDbId = created!.Id;
+        await client.PostAsJsonAsync($"/api/v1/projects/gate6/issues/{created.Sequence}/acceptance-criteria",
+            new CreateAcceptanceCriterionRequest("not yet done"));
+
+        var resp = await client.PostAsJsonAsync($"/api/v1/projects/gate6/issues/{created.Sequence}/transitions",
+            new TransitionIssueRequest(doneId, Force: true, BypassReason: "shipping anyway; will fix in follow-up"));
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
+            var events = db.Set<GateOverrideEvent>()
+                .Where(g => g.IssueId == issueDbId).ToList();
+            events.Should().ContainSingle();
+            events[0].GateName.Should().Be("acceptance_criteria_unchecked");
+            events[0].Reason.Should().Be("shipping anyway; will fix in follow-up");
+        }
+    }
+
+    [Fact]
+    public async Task Force_true_with_empty_AC_does_NOT_write_GateOverrideEvent()
+    {
+        var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/projects",
+            new CreateProjectRequest("gate7", "P gate7", "GT7"));
+
+        Guid doneId, issueDbId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
+            var project = db.Projects.Single(p => p.Slug == "gate7");
+            var done = new State
+            {
+                ProjectId = project.Id, Name = "Done",
+                Group = StateGroup.Completed, Color = "#22c55e", SortOrder = 1,
+            };
+            db.States.Add(done); db.SaveChanges();
+            doneId = done.Id;
+            var workflow = db.Workflows.Single(w => w.ProjectId == project.Id);
+            db.WorkflowTransitions.Add(new WorkflowTransition
+            {
+                WorkflowId = workflow.Id, FromStateId = project.DefaultStateId!.Value, ToStateId = done.Id,
+            });
+            db.SaveChanges();
+        }
+        var created = await (await client.PostAsJsonAsync("/api/v1/projects/gate7/issues",
+            new CreateIssueRequest("X", "y"))).Content.ReadFromJsonAsync<IssueDto>();
+        issueDbId = created!.Id;
+
+        // No AC items. force=true is a no-op (gate would not have fired) — no event.
+        var resp = await client.PostAsJsonAsync($"/api/v1/projects/gate7/issues/{created.Sequence}/transitions",
+            new TransitionIssueRequest(doneId, Force: true, BypassReason: "just being explicit"));
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
+            db.Set<GateOverrideEvent>().Where(g => g.IssueId == issueDbId).ToList()
+                .Should().BeEmpty();
+        }
+    }
 }

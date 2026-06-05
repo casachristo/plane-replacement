@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Waypoint.Api.Auth;
 using Waypoint.Api.Pagination;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
@@ -87,7 +88,7 @@ public sealed class IssueRepository : IIssueRepository
             .Include(i => i.IssueType)
             .FirstOrDefaultAsync(i => i.ProjectId == projectId && i.SequenceId == seq, ct);
 
-    public async Task<Issue> TransitionAsync(Guid projectId, int seq, Guid toStateId, bool force, CancellationToken ct)
+    public async Task<Issue> TransitionAsync(Guid projectId, int seq, Guid toStateId, bool force, string? bypassReason, Principal? actor, CancellationToken ct)
     {
         var issue = await _db.Issues
             .Include(i => i.State).Include(i => i.IssueType)
@@ -115,9 +116,10 @@ public sealed class IssueRepository : IIssueRepository
             throw new ConflictException("transition_not_allowed",
                 $"Transition from state '{issue.State.Name}' to '{newState.Name}' is not allowed by the workflow.");
 
-        // WAY-4: pre-fact gate — closing an issue (group=Completed) requires every AC item
-        // checked. Bypass with force=true (WAY-9 will audit the bypass separately).
-        if (!force && newState.Group == StateGroup.Completed)
+        // WAY-4 / WAY-9: pre-fact gate on Completed group. Bypass with force=true; every
+        // bypass that actually skipped real unchecked AC writes a GateOverrideEvent.
+        var gateName = "acceptance_criteria_unchecked";
+        if (newState.Group == StateGroup.Completed)
         {
             var unchecked_ = await _db.Set<AcceptanceCriterion>().AsNoTracking()
                 .Where(a => a.IssueId == issue.Id && !a.Checked)
@@ -126,10 +128,23 @@ public sealed class IssueRepository : IIssueRepository
                 .ToListAsync(ct);
             if (unchecked_.Count > 0)
             {
-                throw new PreconditionFailedException(
-                    "acceptance_criteria_unchecked",
-                    $"Cannot transition to '{newState.Name}' — {unchecked_.Count} acceptance criterion(s) are still unchecked.",
-                    new Dictionary<string, object> { ["unchecked"] = unchecked_ });
+                if (!force)
+                {
+                    throw new PreconditionFailedException(gateName,
+                        $"Cannot transition to '{newState.Name}' — {unchecked_.Count} acceptance criterion(s) are still unchecked.",
+                        new Dictionary<string, object> { ["unchecked"] = unchecked_ });
+                }
+                // Bypass actually skipped a real gate — audit it (WAY-9).
+                var (atype, aid, alabel) = ResolveActor(actor);
+                _db.Set<GateOverrideEvent>().Add(new GateOverrideEvent
+                {
+                    IssueId = issue.Id,
+                    GateName = gateName,
+                    Reason = bypassReason ?? string.Empty,
+                    ActorType = atype,
+                    ActorId = aid,
+                    ActorLabel = alabel,
+                });
             }
         }
 
@@ -150,6 +165,18 @@ public sealed class IssueRepository : IIssueRepository
 
         return await GetBySequenceAsync(projectId, seq, ct)
             ?? throw new InvalidOperationException("Issue disappeared after transition.");
+    }
+
+    private static (ActorType type, Guid? id, string? label) ResolveActor(Principal? p)
+    {
+        if (p is null) return (ActorType.System, null, null);
+        if (p.PassthroughActorId is not null)
+        {
+            Guid? id = Guid.TryParse(p.PassthroughActorId, out var g) ? g : null;
+            return (ActorType.Passthrough, id, p.PassthroughActorLabel);
+        }
+        var t = p.Kind == PrincipalKind.Human ? ActorType.User : ActorType.Service;
+        return (t, Guid.TryParse(p.Id, out var pid) ? pid : null, p.DisplayName);
     }
 
     public async Task<Issue> UpdateAsync(Guid projectId, int seq, string? title, string? descriptionMd, int? priority, CancellationToken ct)
