@@ -61,7 +61,8 @@ builder.Services.AddHttpClient("waypoint-webhooks", client =>
 {
     client.Timeout = TimeSpan.FromSeconds(15);
 });
-builder.Services.AddHostedService<Waypoint.Api.Webhooks.WebhookDispatcher>();
+if (!builder.Environment.IsEnvironment("Testing"))
+    builder.Services.AddHostedService<Waypoint.Api.Webhooks.WebhookDispatcher>();
 
 // OpenTelemetry — traces only (metrics already exposed via WaypointMetrics + Prometheus).
 // OTLP exporter ships to whatever the OTEL_EXPORTER_OTLP_ENDPOINT env var points at;
