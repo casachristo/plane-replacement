@@ -27,11 +27,27 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      # WAY-14: service containers in Gitea Actions are reachable by service-name
+      # DNS from the job container, NOT at localhost (job + services live in the
+      # same docker network but separate namespaces). Fail loud + early if the
+      # service isn't actually reachable instead of letting every test cascade.
+      - name: Smoke-check Postgres reachability
+        run: |
+          apt-get update -qq && apt-get install -y -qq postgresql-client >/dev/null
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if pg_isready -h postgres -p 5432 -U waypoint -q; then
+              echo "postgres reachable on attempt $i"; exit 0
+            fi
+            echo "postgres not ready (attempt $i), sleeping 2s"
+            sleep 2
+          done
+          echo "postgres unreachable after 10 attempts" >&2
+          exit 1
       - run: dotnet restore
       - run: dotnet build --no-restore --configuration Release
       - name: Run tests
         env:
-          WAYPOINT_TEST_PG_HOST: localhost
+          WAYPOINT_TEST_PG_HOST: postgres
           WAYPOINT_TEST_PG_PORT: "5432"
           WAYPOINT_TEST_PG_USER: waypoint
           WAYPOINT_TEST_PG_PASSWORD: waypoint
@@ -58,6 +74,11 @@ jobs:
         image: postgres:16-alpine
         env: { POSTGRES_DB: waypoint, POSTGRES_USER: waypoint, POSTGRES_PASSWORD: waypoint }
         ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U waypoint"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -67,7 +88,7 @@ jobs:
       - name: Stryker on Waypoint.Api (auth + endpoints)
         working-directory: src/Waypoint.Api
         env:
-          WAYPOINT_TEST_PG_HOST: localhost
+          WAYPOINT_TEST_PG_HOST: postgres
         # CI gate: ANY surviving mutation in Auth/ is a build failure (zero-tolerance).
         # Stryker doesn't have a per-folder zero-tolerance flag yet — Phase 7 follow-up
         # ticket: add post-Stryker analysis step that greps the json report for
