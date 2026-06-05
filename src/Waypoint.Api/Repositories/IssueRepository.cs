@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Pagination;
+using Waypoint.Api.Webhooks;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
 using Waypoint.Domain.Enums;
@@ -10,7 +11,12 @@ namespace Waypoint.Api.Repositories;
 public sealed class IssueRepository : IIssueRepository
 {
     private readonly WaypointDbContext _db;
-    public IssueRepository(WaypointDbContext db) => _db = db;
+    private readonly IWebhookPublisher _publisher;
+    public IssueRepository(WaypointDbContext db, IWebhookPublisher publisher)
+    {
+        _db = db;
+        _publisher = publisher;
+    }
 
     public async Task<int> NextSequenceAsync(Guid projectId, CancellationToken ct)
     {
@@ -77,8 +83,12 @@ public sealed class IssueRepository : IIssueRepository
             ActorType = ActorType.System,
             Verb = "created",
         });
-        await _db.SaveChangesAsync(ct);
 
+        var state = await _db.States.AsNoTracking().FirstAsync(s => s.Id == issue.StateId, ct);
+        await _publisher.PublishAsync(WebhookEvent.IssueCreated, projectId,
+            WebhookPayloads.IssueCreated(issue, state), ct);
+
+        await _db.SaveChangesAsync(ct);
         return issue;
     }
 
@@ -116,9 +126,10 @@ public sealed class IssueRepository : IIssueRepository
             throw new ConflictException("transition_not_allowed",
                 $"Transition from state '{issue.State.Name}' to '{newState.Name}' is not allowed by the workflow.");
 
-        // WAY-4 / WAY-9: pre-fact gate on Completed group. Bypass with force=true; every
+        // WAY-4 / WAY-9: pre-fact gate on Completed. Bypass with force=true; every
         // bypass that actually skipped real unchecked AC writes a GateOverrideEvent.
         var gateName = "acceptance_criteria_unchecked";
+        GateOverrideEvent? overrideEvent = null;
         if (newState.Group == StateGroup.Completed)
         {
             var unchecked_ = await _db.Set<AcceptanceCriterion>().AsNoTracking()
@@ -134,9 +145,8 @@ public sealed class IssueRepository : IIssueRepository
                         $"Cannot transition to '{newState.Name}' — {unchecked_.Count} acceptance criterion(s) are still unchecked.",
                         new Dictionary<string, object> { ["unchecked"] = unchecked_ });
                 }
-                // Bypass actually skipped a real gate — audit it (WAY-9).
                 var (atype, aid, alabel) = ResolveActor(actor);
-                _db.Set<GateOverrideEvent>().Add(new GateOverrideEvent
+                overrideEvent = new GateOverrideEvent
                 {
                     IssueId = issue.Id,
                     GateName = gateName,
@@ -144,10 +154,12 @@ public sealed class IssueRepository : IIssueRepository
                     ActorType = atype,
                     ActorId = aid,
                     ActorLabel = alabel,
-                });
+                };
+                _db.Set<GateOverrideEvent>().Add(overrideEvent);
             }
         }
 
+        var previousState = issue.State;
         var beforeStateId = issue.StateId;
         issue.StateId = toStateId;
         issue.UpdatedAt = DateTimeOffset.UtcNow;
@@ -161,6 +173,15 @@ public sealed class IssueRepository : IIssueRepository
             BeforeJson = $$"""{"state_id":"{{beforeStateId}}"}""",
             AfterJson = $$"""{"state_id":"{{toStateId}}"}""",
         });
+
+        await _publisher.PublishAsync(WebhookEvent.IssueTransitioned, projectId,
+            WebhookPayloads.IssueTransitioned(issue, previousState, newState), ct);
+        if (overrideEvent is not null)
+        {
+            await _publisher.PublishAsync(WebhookEvent.GateOverrideFired, projectId,
+                WebhookPayloads.GateOverride(overrideEvent, WebhookPayloads.From(issue)), ct);
+        }
+
         await _db.SaveChangesAsync(ct);
 
         return await GetBySequenceAsync(projectId, seq, ct)
@@ -181,7 +202,9 @@ public sealed class IssueRepository : IIssueRepository
 
     public async Task<Issue> UpdateAsync(Guid projectId, int seq, string? title, string? descriptionMd, int? priority, CancellationToken ct)
     {
-        var issue = await _db.Issues.FirstOrDefaultAsync(i => i.ProjectId == projectId && i.SequenceId == seq, ct)
+        var issue = await _db.Issues
+            .Include(i => i.State).Include(i => i.IssueType)
+            .FirstOrDefaultAsync(i => i.ProjectId == projectId && i.SequenceId == seq, ct)
             ?? throw new NotFoundException("issue_not_found", "Issue not found.");
         if (title is not null) issue.Title = title;
         if (descriptionMd is not null) issue.DescriptionMd = descriptionMd;
@@ -195,6 +218,8 @@ public sealed class IssueRepository : IIssueRepository
             ActorType = ActorType.System,
             Verb = "updated",
         });
+        await _publisher.PublishAsync(WebhookEvent.IssueUpdated, projectId,
+            new { issue = WebhookPayloads.From(issue), state = WebhookPayloads.From(issue.State) }, ct);
         await _db.SaveChangesAsync(ct);
 
         return await GetBySequenceAsync(projectId, seq, ct)

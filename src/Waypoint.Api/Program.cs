@@ -51,6 +51,7 @@ builder.Services.AddDbContext<WaypointDbContext>(opts =>
 
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+builder.Services.AddScoped<Waypoint.Api.Webhooks.IWebhookPublisher, Waypoint.Api.Webhooks.WebhookPublisher>();
 builder.Services.AddScoped<IIssueRepository, IssueRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IIntentRepository, IntentRepository>();
