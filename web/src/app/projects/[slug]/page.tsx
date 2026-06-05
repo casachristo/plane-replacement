@@ -25,6 +25,7 @@ export default async function ProjectPage({ params }: { params: Promise<{ slug: 
       </div>
       {states && states.length > 0 ? (
         <KanbanBoard
+          projectSlug={slug}
           projectIdentifier={project.identifier}
           states={states}
           issues={page?.data ?? []}

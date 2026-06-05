@@ -20,6 +20,19 @@ export type Project = {
   updatedAt: string;
 };
 
+export type AcceptanceCriterion = {
+  id: string;
+  position: number;
+  text: string;
+  checked: boolean;
+  checkedAt: string | null;
+  checkedByActorType: string | null;
+  checkedByActorId: string | null;
+  checkedByActorLabel: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Issue = {
   id: string;
   sequence: number;
@@ -32,6 +45,7 @@ export type Issue = {
   priority: number;
   createdAt: string;
   updatedAt: string;
+  acceptanceCriteria?: AcceptanceCriterion[];
 };
 
 export type State = {
@@ -56,7 +70,6 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null>
   const url = isServer() ? `${SERVER_API_BASE}${path}` : path;
   const headers: Record<string, string> = { 'Accept': 'application/json', ...(init?.headers as Record<string, string> ?? {}) };
   if (isServer()) {
-    // Forward the session cookie so the API sees the same human principal.
     const cookieStore = await cookies();
     const session = cookieStore.get('waypoint_session');
     if (session) headers['Cookie'] = `waypoint_session=${session.value}`;
@@ -85,4 +98,9 @@ export async function listIssues(slug: string): Promise<Paged<Issue> | null> {
 
 export async function listStates(slug: string): Promise<State[] | null> {
   return fetchJson<State[]>(`/api/v1/projects/${slug}/states`);
+}
+
+export async function getIssue(slug: string, seq: number): Promise<Issue | null> {
+  // The single-issue GET includes acceptanceCriteria inline (WAY-7).
+  return fetchJson<Issue>(`/api/v1/projects/${slug}/issues/${seq}`);
 }

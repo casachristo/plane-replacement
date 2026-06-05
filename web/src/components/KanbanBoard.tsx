@@ -1,10 +1,12 @@
 import type { Issue, State } from '@/lib/api';
 
 export function KanbanBoard({
+  projectSlug,
   projectIdentifier,
   states,
   issues,
 }: {
+  projectSlug: string;
   projectIdentifier: string;
   states: State[];
   issues: Issue[];
@@ -45,14 +47,16 @@ export function KanbanBoard({
                 <li className="text-xs text-[var(--muted)] px-2 py-4 text-center">—</li>
               ) : (
                 items.map(i => (
-                  <li
-                    key={i.id}
-                    className="rounded border border-[var(--border)] p-2 hover:border-[var(--accent)] cursor-default"
-                  >
-                    <div className="text-[10px] text-[var(--muted)] tabular-nums">
-                      {projectIdentifier}-{i.sequence}
-                    </div>
-                    <div className="text-sm leading-snug">{i.title}</div>
+                  <li key={i.id}>
+                    <a
+                      href={`/projects/${projectSlug}/issues/${i.sequence}`}
+                      className="block rounded border border-[var(--border)] p-2 hover:border-[var(--accent)]"
+                    >
+                      <div className="text-[10px] text-[var(--muted)] tabular-nums">
+                        {projectIdentifier}-{i.sequence}
+                      </div>
+                      <div className="text-sm leading-snug">{i.title}</div>
+                    </a>
                   </li>
                 ))
               )}
