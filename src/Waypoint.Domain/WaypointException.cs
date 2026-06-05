@@ -22,3 +22,6 @@ public sealed class ConflictException(string code, string message, IReadOnlyDict
 
 public sealed class ValidationException(string code, string message, IReadOnlyDictionary<string, object>? details = null)
     : WaypointException(code, message, 422, details);
+
+public sealed class PreconditionFailedException(string code, string message, IReadOnlyDictionary<string, object>? details = null)
+    : WaypointException(code, message, 412, details);

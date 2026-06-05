@@ -62,7 +62,7 @@ public static class IssueEndpoints
             AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var updated = await issues.TransitionAsync(project.Id, seq, req.ToStateId, ct);
+            var updated = await issues.TransitionAsync(project.Id, seq, req.ToStateId, req.Force, ct);
             return Results.Ok(ToDto(updated));
         });
 

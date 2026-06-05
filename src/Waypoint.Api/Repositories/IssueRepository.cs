@@ -24,11 +24,6 @@ public sealed class IssueRepository : IIssueRepository
             """;
         await _db.Database.ExecuteSqlRawAsync(ensure, ct);
 
-        // Don't ad-hoc open the EF connection — that bypasses connection pooling and can leak
-        // open connections outside EF's lifetime management. Use ExecuteSqlRawAsync via a
-        // dynamic-parameter wrapper (EF treats the SQL as a scalar query via FromSqlRaw on a
-        // keyless type, but for a single value we use a tiny scratch table). Cleanest path:
-        // run nextval through the same DDL channel we used to ensure the sequence.
         var conn = _db.Database.GetDbConnection();
         var opened = false;
         if (conn.State != System.Data.ConnectionState.Open)
@@ -92,7 +87,7 @@ public sealed class IssueRepository : IIssueRepository
             .Include(i => i.IssueType)
             .FirstOrDefaultAsync(i => i.ProjectId == projectId && i.SequenceId == seq, ct);
 
-    public async Task<Issue> TransitionAsync(Guid projectId, int seq, Guid toStateId, CancellationToken ct)
+    public async Task<Issue> TransitionAsync(Guid projectId, int seq, Guid toStateId, bool force, CancellationToken ct)
     {
         var issue = await _db.Issues
             .Include(i => i.State).Include(i => i.IssueType)
@@ -119,6 +114,24 @@ public sealed class IssueRepository : IIssueRepository
         if (!validator.CanTransition(issue.StateId, toStateId))
             throw new ConflictException("transition_not_allowed",
                 $"Transition from state '{issue.State.Name}' to '{newState.Name}' is not allowed by the workflow.");
+
+        // WAY-4: pre-fact gate — closing an issue (group=Completed) requires every AC item
+        // checked. Bypass with force=true (WAY-9 will audit the bypass separately).
+        if (!force && newState.Group == StateGroup.Completed)
+        {
+            var unchecked_ = await _db.Set<AcceptanceCriterion>().AsNoTracking()
+                .Where(a => a.IssueId == issue.Id && !a.Checked)
+                .OrderBy(a => a.Position)
+                .Select(a => new { id = a.Id, position = a.Position, text = a.Text })
+                .ToListAsync(ct);
+            if (unchecked_.Count > 0)
+            {
+                throw new PreconditionFailedException(
+                    "acceptance_criteria_unchecked",
+                    $"Cannot transition to '{newState.Name}' — {unchecked_.Count} acceptance criterion(s) are still unchecked.",
+                    new Dictionary<string, object> { ["unchecked"] = unchecked_ });
+            }
+        }
 
         var beforeStateId = issue.StateId;
         issue.StateId = toStateId;
