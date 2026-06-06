@@ -55,6 +55,10 @@ builder.Services.AddScoped<Waypoint.Api.Webhooks.IWebhookPublisher, Waypoint.Api
 builder.Services.AddScoped<IIssueRepository, IssueRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IIntentRepository, IntentRepository>();
+// Order matters: the middleware takes the FIRST resolver that returns a principal.
+// Authelia SSO header (when trusted) identifies a human first; then the waypoint_session
+// cookie; then a service bearer token for API clients.
+builder.Services.AddScoped<IPrincipalResolver, AutheliaHeaderResolver>();
 builder.Services.AddScoped<IPrincipalResolver, OidcSessionResolver>();
 builder.Services.AddScoped<IPrincipalResolver, ServiceBearerResolver>();
 builder.Services.AddHttpClient("waypoint-webhooks", client =>

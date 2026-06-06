@@ -18,4 +18,12 @@ public sealed class OidcOptions
     public string GroupsClaim { get; set; } = "groups";
     public string[] AdminGroups { get; set; } = ["waypoint-admins"];
     public TimeSpan SessionLifetime { get; set; } = TimeSpan.FromDays(30);
+
+    // When true, Waypoint trusts the Remote-Email / Remote-Name / Remote-Groups identity
+    // headers injected by an Authelia forward-auth middleware on the ingress, so a homelab
+    // SSO'd user is recognized WITHOUT a separate Waypoint OIDC login (matches how Cairn
+    // trusts Remote-Email behind Authelia). MUST stay false until the ingress is Authelia-
+    // gated AND the public API port only accepts proxied traffic — otherwise a spoofed
+    // header could grant access. Default false (inert).
+    public bool TrustProxyHeaders { get; set; }
 }
