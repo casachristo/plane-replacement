@@ -33,7 +33,7 @@ public class TargetedKills7MutationCoverage : IClassFixture<PostgresFixture>
             .Content.ReadFromJsonAsync<AcceptanceCriterionDto>();
         dto!.Checked.Should().BeTrue();
         dto.CheckedAt.Should().NotBeNull();
-        dto.CheckedAt.Value.Should().BeAfter(DateTimeOffset.UtcNow.AddMinutes(-1));
+        dto.CheckedAt!.Value.Should().BeAfter(DateTimeOffset.UtcNow.AddMinutes(-1));
     }
 
     [Fact]
