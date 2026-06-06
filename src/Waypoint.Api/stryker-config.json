@@ -22,7 +22,7 @@
       "json",
       "cleartext"
     ],
-    "concurrency": 2,
+    "concurrency": 4,
     "additional-timeout": 30000
   }
 }
