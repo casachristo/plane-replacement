@@ -25,7 +25,7 @@ public class Misc2MutationCoverage : IClassFixture<PostgresFixture>
             new CreateApiTokenRequest("prefix-test", Array.Empty<string>(), "Service"));
         var dto = await resp.Content.ReadFromJsonAsync<ApiTokenCreatedDto>();
         // Full token format: wpt_<8chars>_<rest>
-        var fullParts = dto!.FullToken.Split('_');
+        var fullParts = dto!.FullToken.Split(new[] { '_' }, 3);
         dto.Token.Prefix.Should().Be(fullParts[1]);
     }
 
