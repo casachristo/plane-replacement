@@ -191,12 +191,14 @@ app.MapSearchEndpoints("/internal/v1");
 // Public surface (:8080)
 app.MapProjectEndpoints("/api/v1/projects");
 app.MapIssueEndpoints("/api/v1/projects");
+app.MapEpicEndpoints("/api/v1/projects");
 app.MapCommentEndpoints("/api/v1/projects");
 app.MapAcceptanceCriterionEndpoints("/api/v1/projects");
 
 // Internal surface (:8081)
 app.MapProjectEndpoints("/internal/v1/projects");
 app.MapIssueEndpoints("/internal/v1/projects");
+app.MapEpicEndpoints("/internal/v1/projects");
 app.MapCommentEndpoints("/internal/v1/projects");
 app.MapAcceptanceCriterionEndpoints("/internal/v1/projects");
 app.MapIntentEndpoints();

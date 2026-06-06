@@ -48,12 +48,12 @@ public class IssueEndpointsExtra2MutationCoverage : IClassFixture<PostgresFixtur
     }
 
     [Fact]
-    public async Task POST_issue_returned_DTO_has_Backlog_StateName_by_default()
+    public async Task POST_issue_returned_DTO_has_ToDo_StateName_by_default()
     {
         using var client = await NewClient("ix2d", "IX2D");
         var dto = await (await client.PostAsJsonAsync("/api/v1/projects/ix2d/issues",
             new CreateIssueRequest("t", "b"))).Content.ReadFromJsonAsync<IssueDto>();
-        dto!.StateName.Should().Be("Backlog");
+        dto!.StateName.Should().Be("To Do");
     }
 
     [Fact]

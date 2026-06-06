@@ -75,9 +75,9 @@ public class WebhookEventTests : IClassFixture<PostgresFixture>
         var env = JsonDocument.Parse(deliveries[0].PayloadJson).RootElement;
         env.GetProperty("event").GetString().Should().Be("issue.created");
         env.GetProperty("payload").GetProperty("state")
-            .GetProperty("name").GetString().Should().Be("Backlog");
+            .GetProperty("name").GetString().Should().Be("To Do");
         env.GetProperty("payload").GetProperty("state")
-            .GetProperty("group").GetString().Should().Be("Backlog");
+            .GetProperty("group").GetString().Should().Be("Unstarted");
     }
 
     [Fact]

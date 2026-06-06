@@ -6,7 +6,6 @@ using Waypoint.Api.Tests.Fixtures;
 using Waypoint.Contracts;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
-using Waypoint.Domain.Enums;
 using Xunit;
 
 namespace Waypoint.Api.Tests.Endpoints;
@@ -37,16 +36,8 @@ public class TransitionGateTests : IClassFixture<PostgresFixture>
         {
             var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
             var project = db.Projects.Single(p => p.Slug == slug);
-            var done = new State
-            {
-                ProjectId = project.Id,
-                Name = "Done",
-                Group = StateGroup.Completed,
-                Color = "#22c55e",
-                SortOrder = 1,
-            };
-            db.States.Add(done);
-            db.SaveChanges();
+            // Reuse the auto-created Done state (state names are unique per project).
+            var done = db.States.Single(s => s.ProjectId == project.Id && s.Name == "Done");
             doneId = done.Id;
 
             var workflow = db.Workflows.Single(w => w.ProjectId == project.Id);
@@ -157,12 +148,7 @@ public class TransitionGateTests : IClassFixture<PostgresFixture>
         {
             var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
             var project = db.Projects.Single(p => p.Slug == "gate6");
-            var done = new State
-            {
-                ProjectId = project.Id, Name = "Done",
-                Group = StateGroup.Completed, Color = "#22c55e", SortOrder = 1,
-            };
-            db.States.Add(done); db.SaveChanges();
+            var done = db.States.Single(s => s.ProjectId == project.Id && s.Name == "Done");
             doneId = done.Id;
             var workflow = db.Workflows.Single(w => w.ProjectId == project.Id);
             db.WorkflowTransitions.Add(new WorkflowTransition
@@ -208,12 +194,7 @@ public class TransitionGateTests : IClassFixture<PostgresFixture>
         {
             var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
             var project = db.Projects.Single(p => p.Slug == "gate7");
-            var done = new State
-            {
-                ProjectId = project.Id, Name = "Done",
-                Group = StateGroup.Completed, Color = "#22c55e", SortOrder = 1,
-            };
-            db.States.Add(done); db.SaveChanges();
+            var done = db.States.Single(s => s.ProjectId == project.Id && s.Name == "Done");
             doneId = done.Id;
             var workflow = db.Workflows.Single(w => w.ProjectId == project.Id);
             db.WorkflowTransitions.Add(new WorkflowTransition

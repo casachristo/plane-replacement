@@ -30,12 +30,12 @@ public class IssueEndpointsExtra4MutationCoverage : IClassFixture<PostgresFixtur
     }
 
     [Fact]
-    public async Task POST_returned_DTO_StateName_is_Backlog_for_fresh_project()
+    public async Task POST_returned_DTO_StateName_is_ToDo_for_fresh_project()
     {
         using var c = await Setup("ix4b", "IX4B");
         var dto = await (await c.PostAsJsonAsync("/api/v1/projects/ix4b/issues",
             new CreateIssueRequest("t", "b"))).Content.ReadFromJsonAsync<IssueDto>();
-        dto!.StateName.Should().Be("Backlog");
+        dto!.StateName.Should().Be("To Do");
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class IssueEndpointsExtra4MutationCoverage : IClassFixture<PostgresFixtur
         await c.PostAsJsonAsync("/api/v1/projects/ix4e/issues", new CreateIssueRequest("Beta", "b"));
         var page = await (await c.GetAsync("/api/v1/projects/ix4e/issues"))
             .Content.ReadFromJsonAsync<PagedResponse<IssueDto>>();
-        page!.Data.All(i => i.StateName == "Backlog").Should().BeTrue();
+        page!.Data.All(i => i.StateName == "To Do").Should().BeTrue();
     }
 
     [Fact]

@@ -10,6 +10,8 @@ public sealed record IssueDto(
     Guid IssueTypeId,
     string IssueTypeName,
     int Priority,
+    Guid? EpicId,
+    string? EpicTitle,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt)
 {

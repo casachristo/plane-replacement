@@ -52,7 +52,7 @@ public class IssueEndpointsTests : IClassFixture<PostgresFixture>
         var dto = await get.Content.ReadFromJsonAsync<IssueDto>();
         dto!.Title.Should().Be("Hello");
         dto.DescriptionMd.Should().Be("World");
-        dto.StateName.Should().Be("Backlog");
+        dto.StateName.Should().Be("To Do");
     }
 
     [Fact]
@@ -102,14 +102,10 @@ public class IssueEndpointsTests : IClassFixture<PostgresFixture>
         {
             var db = scope.ServiceProvider.GetRequiredService<Waypoint.Domain.WaypointDbContext>();
             var project = db.Projects.Single(p => p.Slug == "trans-proj");
-            var inProgress = new Waypoint.Domain.Entities.State
-            {
-                ProjectId = project.Id, Name = "In Progress",
-                Group = Waypoint.Domain.Enums.StateGroup.Started,
-                Color = "#22c55e", SortOrder = 1,
-            };
-            db.States.Add(inProgress);
-            db.SaveChanges();
+            // The default workflow already provides To Do / In Progress / Done; reuse the
+            // existing In Progress state (state names are unique per project) and just wire
+            // a transition into it from the default landing state.
+            var inProgress = db.States.Single(s => s.ProjectId == project.Id && s.Name == "In Progress");
             var workflow = db.Workflows.Single(w => w.ProjectId == project.Id);
             db.WorkflowTransitions.Add(new Waypoint.Domain.Entities.WorkflowTransition
             {
@@ -145,13 +141,9 @@ public class IssueEndpointsTests : IClassFixture<PostgresFixture>
         {
             var db = scope.ServiceProvider.GetRequiredService<Waypoint.Domain.WaypointDbContext>();
             var project = db.Projects.Single(p => p.Slug == "bad-trans");
-            var other = new Waypoint.Domain.Entities.State
-            {
-                ProjectId = project.Id, Name = "Done",
-                Group = Waypoint.Domain.Enums.StateGroup.Completed,
-                Color = "#22c55e", SortOrder = 1,
-            };
-            db.States.Add(other); db.SaveChanges();
+            // Reuse the auto-created Done state. No To Do -> Done transition exists in the
+            // default workflow, so the transition must be rejected with 409.
+            var other = db.States.Single(s => s.ProjectId == project.Id && s.Name == "Done");
             otherId = other.Id;
         }
 

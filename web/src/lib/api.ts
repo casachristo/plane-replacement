@@ -43,10 +43,14 @@ export type Issue = {
   issueTypeId: string;
   issueTypeName: string;
   priority: number;
+  epicId: string | null;
+  epicTitle: string | null;
   createdAt: string;
   updatedAt: string;
   acceptanceCriteria?: AcceptanceCriterion[];
 };
+
+export type Epic = { id: string; sequence: number; title: string; status: string };
 
 export type State = {
   id: string;
@@ -120,6 +124,10 @@ export async function listIssues(slug: string): Promise<Paged<Issue> | null> {
 
 export async function listStates(slug: string): Promise<State[] | null> {
   return fetchJson<State[]>(`/api/v1/projects/${slug}/states`);
+}
+
+export async function listEpics(slug: string): Promise<Epic[] | null> {
+  return fetchJson<Epic[]>(`/api/v1/projects/${slug}/epics`);
 }
 
 export async function getIssue(slug: string, seq: number): Promise<Issue | null> {

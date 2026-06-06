@@ -56,6 +56,26 @@ public static class IssueEndpoints
             return Results.Ok(ToDto(updated));
         });
 
+        // Assign (or unassign, with epicId=null) an issue's module/epic — the dimension the
+        // board can group by.
+        group.MapPut("/{seq:int}/epic", async (string slug, int seq, AssignEpicRequest req,
+            IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+        {
+            AuthGuard.RequireAuth(ctx);
+            var project = await projects.GetBySlugAsync(slug, ct)
+                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
+            if (req.EpicId is { } epicId &&
+                !await db.Set<Epic>().AnyAsync(e => e.Id == epicId && e.ProjectId == project.Id, ct))
+                throw new NotFoundException("epic_not_found", "Epic not found in this project.");
+            var issue = await db.Issues.Include(i => i.State).Include(i => i.IssueType)
+                .FirstOrDefaultAsync(i => i.ProjectId == project.Id && i.SequenceId == seq, ct)
+                ?? throw new NotFoundException("issue_not_found", $"Issue {project.Identifier}-{seq} not found.");
+            issue.EpicId = req.EpicId;
+            await db.SaveChangesAsync(ct);
+            if (issue.EpicId is not null) await db.Entry(issue).Reference(i => i.Epic).LoadAsync(ct);
+            return Results.Ok(ToDto(issue));
+        });
+
         group.MapPost("/{seq:int}/transitions", async (string slug, int seq, TransitionIssueRequest req,
             IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
@@ -110,5 +130,6 @@ public static class IssueEndpoints
         i.StateId, i.State.Name,
         i.IssueTypeId, i.IssueType.Name,
         (int)i.Priority,
+        i.EpicId, i.Epic?.Title,   // module (epic): EpicId always set; Title only when Epic is included
         i.CreatedAt, i.UpdatedAt);
 }
