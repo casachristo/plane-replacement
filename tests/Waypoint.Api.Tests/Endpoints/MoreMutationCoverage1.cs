@@ -1,3 +1,4 @@
+using Waypoint.Api.Endpoints.PublicApi;
 using System.Net.Http.Json;
 using FluentAssertions;
 using Waypoint.Api.Tests.Fixtures;
