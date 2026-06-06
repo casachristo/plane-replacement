@@ -84,11 +84,24 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Wait for Postgres
+        run: |
+          apt-get update -qq && apt-get install -y -qq postgresql-client >/dev/null
+          for i in $(seq 1 30); do
+            pg_isready -h postgres -p 5432 -U waypoint -q && echo "postgres ready" && exit 0
+            echo "postgres not ready ($i)"; sleep 2
+          done
+          echo "postgres unreachable" >&2; exit 1
       - run: dotnet tool restore
       - name: Stryker on Waypoint.Api (auth + endpoints)
         working-directory: src/Waypoint.Api
         env:
+          # Without the full set, PostgresFixture defaults to chris.box:15432 and every
+          # Stryker initial-run test fails to connect (the CI service is postgres:5432).
           WAYPOINT_TEST_PG_HOST: postgres
+          WAYPOINT_TEST_PG_PORT: "5432"
+          WAYPOINT_TEST_PG_USER: waypoint
+          WAYPOINT_TEST_PG_PASSWORD: waypoint
         # CI gate: ANY surviving mutation in Auth/ is a build failure (zero-tolerance).
         # Stryker doesn't have a per-folder zero-tolerance flag yet — Phase 7 follow-up
         # ticket: add post-Stryker analysis step that greps the json report for
