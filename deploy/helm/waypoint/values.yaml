@@ -30,6 +30,11 @@ api:
     redirectUri: https://waypoint.chris.box/auth/callback
     scopes: ["openid", "profile", "email", "groups"]
     adminGroups: ["admins", "waypoint-admins"]
+    # Trust the Authelia forward-auth identity headers (Remote-Email/Name/Groups) so a
+    # homelab-SSO'd user is recognized without a separate Waypoint login. Safe because the
+    # ingress below is Authelia-gated (Authelia sets these headers; the route can't be hit
+    # un-authed). Set false to fall back to Waypoint's own OIDC login only.
+    trustProxyHeaders: true
 
 web:
   image:

@@ -6,13 +6,35 @@ metadata:
 spec:
   entryPoints: [websecure]
   routes:
-    - match: Host(`{{ .Values.ingress.host }}`) && (PathPrefix(`/api/v1/`) || PathPrefix(`/auth/`) || PathPrefix(`/healthz`))
+    # Health: open (external checks; in-cluster pod probes hit the pod directly anyway).
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/healthz`)
       kind: Rule
       services:
         - name: waypoint-public
           port: 80
+    # Waypoint's own OIDC login flow: open. Must NOT be Authelia-gated or the /auth/callback
+    # redirect loop breaks; it stays the fallback sign-in when proxy-header trust is off.
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/auth/`)
+      kind: Rule
+      services:
+        - name: waypoint-public
+          port: 80
+    # Public API: Authelia-gated so browser callers carry the Remote-* identity headers that
+    # AutheliaHeaderResolver trusts (the web pod's server-side calls use the internal service
+    # and bypass this route).
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/v1/`)
+      kind: Rule
+      middlewares:
+        - name: authelia
+      services:
+        - name: waypoint-public
+          port: 80
+    # Web (everything else): Authelia-gated → homelab SSO. An already-signed-in user is
+    # recognized without a separate Waypoint login.
     - match: Host(`{{ .Values.ingress.host }}`)
       kind: Rule
+      middlewares:
+        - name: authelia
       services:
         - name: waypoint-web
           port: 80

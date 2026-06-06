@@ -63,6 +63,8 @@ spec:
                 secretKeyRef: { name: waypoint-oidc, key: client_secret }
             - name: Auth__Oidc__RedirectUri
               value: {{ .Values.api.oidc.redirectUri | quote }}
+            - name: Auth__Oidc__TrustProxyHeaders
+              value: {{ .Values.api.oidc.trustProxyHeaders | default false | quote }}
             {{- range $i, $g := .Values.api.oidc.adminGroups }}
             - name: Auth__Oidc__AdminGroups__{{ $i }}
               value: {{ $g | quote }}
