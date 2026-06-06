@@ -13,10 +13,13 @@ spec:
       ports:
         - port: {{ .Values.api.publicPort }}
           protocol: TCP
-    # Internal port: Cairn pods ONLY
+    # Internal port: Cairn pods ONLY. Cairn is currently deployed as `project-board-v2`;
+    # `cairn-api` is kept for the intended rename so neither label breaks the allow.
     - from:
         - podSelector:
             matchLabels: { app: cairn-api }
+        - podSelector:
+            matchLabels: { app: project-board-v2 }
       ports:
         - port: {{ .Values.api.internalPort }}
           protocol: TCP
