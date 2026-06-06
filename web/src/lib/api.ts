@@ -3,7 +3,7 @@
 // so we prepend WAYPOINT_API_BASE. The session cookie must be forwarded manually on
 // the server side via next/headers — see the cookies() helper.
 
-import { cookies } from 'next/headers';
+import { cookies, headers as incomingHeaders } from 'next/headers';
 
 const SERVER_API_BASE = process.env.WAYPOINT_API_BASE ?? 'http://waypoint-public';
 
@@ -73,6 +73,13 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null>
     const cookieStore = await cookies();
     const session = cookieStore.get('waypoint_session');
     if (session) headers['Cookie'] = `waypoint_session=${session.value}`;
+    // Forward the Authelia forward-auth identity headers from the incoming request so the
+    // API's AutheliaHeaderResolver recognizes the SSO'd user without a separate Waypoint login.
+    const inc = await incomingHeaders();
+    for (const name of ['remote-email', 'remote-name', 'remote-user', 'remote-groups']) {
+      const v = inc.get(name);
+      if (v) headers[name] = v;
+    }
   }
   const res = await fetch(url, { ...init, headers, cache: 'no-store' });
   if (res.status === 401 || res.status === 404) return null;
