@@ -47,7 +47,9 @@ public class AdminEndpointsExtra2MutationCoverage : IClassFixture<PostgresFixtur
         var resp = await c.PostAsJsonAsync("/api/admin/tokens",
             new CreateApiTokenRequest("3p", Array.Empty<string>(), "Service"));
         var dto = await resp.Content.ReadFromJsonAsync<ApiTokenCreatedDto>();
-        dto!.FullToken.Split('_').Length.Should().Be(3);
+        dto!.FullToken.Should().StartWith("wpt_");
+        dto.FullToken[12].Should().Be('_');
+        dto.FullToken.Split('_', 3).Length.Should().Be(3);
     }
 
     [Fact]

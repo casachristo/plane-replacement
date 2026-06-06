@@ -63,9 +63,12 @@ public class TokenHasherMutationCoverage
     }
 
     [Fact]
-    public void GenerateNew_full_token_has_three_underscore_parts()
+    public void GenerateNew_full_token_has_wpt_prefix_and_8char_id()
     {
-        var (_, full) = TokenHasher.GenerateNew();
-        full.Split('_').Length.Should().Be(3);
+        var (prefix, full) = TokenHasher.GenerateNew();
+        full.Should().StartWith("wpt_");
+        full[12].Should().Be('_');                 // 8-char prefix sits at [4..12]
+        full.Substring(4, 8).Should().Be(prefix);
+        full.Split('_', 3).Length.Should().Be(3);  // logical structure: wpt / prefix / secret
     }
 }

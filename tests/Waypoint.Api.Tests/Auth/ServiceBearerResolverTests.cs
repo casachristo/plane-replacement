@@ -137,7 +137,7 @@ public class ServiceBearerResolverTests : IClassFixture<PostgresFixture>
         var (factory, full) = await Mint(_pg);
         await using (factory)
         {
-            var prefix = full.Split('_')[1];
+            var prefix = full.Substring(4, 8);
             var tamperedSecret = "tampered-secret-zzzzzzzzzzzzz";
             var p = await Resolve(factory, $"Bearer wpt_{prefix}_{tamperedSecret}");
             p.Should().BeNull();
