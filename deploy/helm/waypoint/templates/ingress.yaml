@@ -19,10 +19,10 @@ spec:
       services:
         - name: waypoint-public
           port: 80
-    # Public API: Authelia-gated so browser callers carry the Remote-* identity headers that
-    # AutheliaHeaderResolver trusts (the web pod's server-side calls use the internal service
-    # and bypass this route).
-    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/v1/`)
+    # Public API (/api/v1 + /api/admin): Authelia-gated so browser callers carry the Remote-*
+    # identity headers that AutheliaHeaderResolver trusts (the web pod's server-side calls use
+    # the internal service and bypass this route).
+    - match: Host(`{{ .Values.ingress.host }}`) && PathPrefix(`/api/`)
       kind: Rule
       middlewares:
         - name: authelia

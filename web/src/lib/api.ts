@@ -91,6 +91,21 @@ export async function whoami(): Promise<Me | null> {
   return fetchJson<Me>('/api/v1/whoami');
 }
 
+export type ApiToken = {
+  id: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  kind: 'Service' | 'Admin';
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+};
+
+export async function listTokens(): Promise<ApiToken[] | null> {
+  return fetchJson<ApiToken[]>('/api/admin/tokens/');
+}
+
 export async function listProjects(): Promise<Project[] | null> {
   return fetchJson<Project[]>('/api/v1/projects');
 }
