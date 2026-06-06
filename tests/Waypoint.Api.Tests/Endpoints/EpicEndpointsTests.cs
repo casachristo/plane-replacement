@@ -30,7 +30,9 @@ public class EpicEndpointsTests : IClassFixture<PostgresFixture>
 
         var a = await c.PostAsJsonAsync($"/api/v1/projects/{slug}/epics", new CreateEpicRequest("Auth"));
         a.StatusCode.Should().Be(HttpStatusCode.Created);
-        (await a.Content.ReadFromJsonAsync<EpicDto>())!.Sequence.Should().Be(1);
+        var firstEpic = (await a.Content.ReadFromJsonAsync<EpicDto>())!;
+        firstEpic.Sequence.Should().Be(1);
+        firstEpic.Status.Should().Be("planned");   // default status literal
 
         await c.PostAsJsonAsync($"/api/v1/projects/{slug}/epics", new CreateEpicRequest("Billing"));
 
@@ -45,6 +47,8 @@ public class EpicEndpointsTests : IClassFixture<PostgresFixture>
         var (c, slug) = await NewProject();
         var resp = await c.PostAsJsonAsync($"/api/v1/projects/{slug}/epics", new CreateEpicRequest("  "));
         resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);   // ValidationException -> 422
+        var verr = await resp.Content.ReadFromJsonAsync<ErrorResponse>();
+        verr!.Error.Code.Should().Be("title_required");
     }
 
     [Fact]
@@ -72,6 +76,66 @@ public class EpicEndpointsTests : IClassFixture<PostgresFixture>
         await c.PostAsJsonAsync($"/api/v1/projects/{slug}/issues", new CreateIssueRequest("X", ""));
         var resp = await c.PutAsJsonAsync($"/api/v1/projects/{slug}/issues/1/epic",
             new AssignEpicRequest(Guid.NewGuid()));   // non-existent epic
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+    // Two projects sharing ONE database, so an epic in project B is visible while
+    // operating on project A -- needed to exercise the cross-project guards.
+    private async Task<(HttpClient client, string slugA, string slugB)> TwoProjects()
+    {
+        var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        var client = factory.CreateClient();
+        var a = "ea-" + Guid.NewGuid().ToString("N")[..10];
+        var b = "eb-" + Guid.NewGuid().ToString("N")[..10];
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest(a, a, a[3..6].ToUpperInvariant()));
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest(b, b, b[3..6].ToUpperInvariant()));
+        return (client, a, b);
+    }
+
+    [Fact]
+    public async Task Assigning_an_epic_that_belongs_to_another_project_is_rejected()
+    {
+        var (c, slugA, slugB) = await TwoProjects();
+        // Epic created under project B...
+        var epicB = await (await c.PostAsJsonAsync($"/api/v1/projects/{slugB}/epics", new CreateEpicRequest("B-epic")))
+            .Content.ReadFromJsonAsync<EpicDto>();
+        await c.PostAsJsonAsync($"/api/v1/projects/{slugA}/issues", new CreateIssueRequest("A-issue", ""));
+        // ...must NOT be assignable to an issue in project A. Kills the
+        // e.Id == epicId && e.ProjectId == project.Id guard: a mutated || would
+        // match B-epic by id alone and let the assignment through.
+        var resp = await c.PutAsJsonAsync($"/api/v1/projects/{slugA}/issues/1/epic", new AssignEpicRequest(epicB!.Id));
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await resp.Content.ReadFromJsonAsync<ErrorResponse>())!.Error.Code.Should().Be("epic_not_found");
+    }
+
+    [Fact]
+    public async Task Assigning_a_module_to_a_missing_issue_returns_404()
+    {
+        var (c, slugA, slugB) = await TwoProjects();
+        // Project A has issue seq 1; project B has none. Unassigning on project B
+        // issue 1 (which does not exist) must 404 -- kills both the ?? throw and the
+        // i.ProjectId == project.Id && i.SequenceId == seq guard (a mutated || would
+        // wrongly resolve project A issue 1).
+        await c.PostAsJsonAsync($"/api/v1/projects/{slugA}/issues", new CreateIssueRequest("only in A", ""));
+        var resp = await c.PutAsJsonAsync($"/api/v1/projects/{slugB}/issues/1/epic", new AssignEpicRequest(null));
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await resp.Content.ReadFromJsonAsync<ErrorResponse>())!.Error.Code.Should().Be("issue_not_found");
+    }
+
+    [Fact]
+    public async Task Listing_epics_for_a_missing_project_returns_404()
+    {
+        var (c, _) = await NewProject();
+        var resp = await c.GetAsync($"/api/v1/projects/missing-{Guid.NewGuid():N}/epics");
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task Creating_an_epic_under_a_missing_project_returns_404()
+    {
+        var (c, _) = await NewProject();
+        var resp = await c.PostAsJsonAsync($"/api/v1/projects/missing-{Guid.NewGuid():N}/epics",
+            new CreateEpicRequest("X"));
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 }
