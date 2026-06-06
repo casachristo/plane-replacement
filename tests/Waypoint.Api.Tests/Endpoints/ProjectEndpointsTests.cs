@@ -78,7 +78,10 @@ public class ProjectEndpointsTests : IClassFixture<PostgresFixture>
         states.Should().NotBeNull();
         states!.Should().NotBeEmpty();
         states!.Should().BeInAscendingOrder(s => s.SortOrder);
-        // Every project gets at least a Backlog state seeded on creation.
-        states!.Select(s => s.Group).Should().Contain("Backlog");
+        // No backlog: new projects seed a To Do / In Progress / Done workflow, To Do default.
+        states!.Select(s => s.Name).Should().Equal("To Do", "In Progress", "Done");
+        states!.Select(s => s.Group).Should().Equal("Unstarted", "Started", "Completed");
+        states!.Should().NotContain(s => s.Group == "Backlog");
+        states!.Single(s => s.IsDefault).Name.Should().Be("To Do");
     }
 }

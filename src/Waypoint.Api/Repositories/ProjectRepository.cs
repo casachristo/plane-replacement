@@ -22,15 +22,27 @@ public sealed class ProjectRepository : IProjectRepository
             _db.Projects.Add(project);
             await _db.SaveChangesAsync(ct);
 
-            var defaultState = new State
+            // No Backlog: new projects get a simple To Do / In Progress / Done workflow, with
+            // To Do as the default landing state for new issues.
+            var todo = new State
             {
-                ProjectId = project.Id, Name = "Backlog", Group = StateGroup.Backlog,
+                ProjectId = project.Id, Name = "To Do", Group = StateGroup.Unstarted,
                 Color = "#94a3b8", SortOrder = 0, IsDefault = true,
             };
-            _db.States.Add(defaultState);
+            var inProgress = new State
+            {
+                ProjectId = project.Id, Name = "In Progress", Group = StateGroup.Started,
+                Color = "#3b82f6", SortOrder = 1, IsDefault = false,
+            };
+            var done = new State
+            {
+                ProjectId = project.Id, Name = "Done", Group = StateGroup.Completed,
+                Color = "#22c55e", SortOrder = 2, IsDefault = false,
+            };
+            _db.States.AddRange(todo, inProgress, done);
             await _db.SaveChangesAsync(ct);
 
-            project.DefaultStateId = defaultState.Id;
+            project.DefaultStateId = todo.Id;
             await _db.SaveChangesAsync(ct);
 
             var workflow = new Workflow { ProjectId = project.Id, Name = "Default" };
