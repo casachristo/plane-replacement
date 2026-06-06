@@ -65,7 +65,9 @@ public class SearchEndpointsMutationCoverage : IClassFixture<PostgresFixture>
         var resp = await c.GetAsync("/api/v1/search?q=%20");
 
         resp.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await resp.Content.ReadAsStringAsync()).Should().Contain("query_required");
+        var body = await resp.Content.ReadAsStringAsync();
+        body.Should().Contain("query_required");
+        body.Should().Contain("Provide a search query");
     }
 
     [Fact]

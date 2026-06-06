@@ -42,7 +42,8 @@ public class AuthPostLoginMutationCoverage : IClassFixture<PostgresFixture>
         ((int)resp.StatusCode).Should().BeInRange(300, 399);
         resp.Headers.Location!.OriginalString.Should().Be("/");
         resp.Headers.TryGetValues("Set-Cookie", out var cookies).Should().BeTrue();
-        string.Join("; ", cookies!).Should().Contain(OidcSessionResolver.CookieName);
+        var wpCookie = cookies!.Single(s => s.StartsWith(OidcSessionResolver.CookieName + "=", System.StringComparison.Ordinal));
+        wpCookie.ToLowerInvariant().Should().Contain("httponly").And.Contain("secure").And.Contain("path=/");
 
         using var scope = f.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
@@ -153,6 +154,25 @@ public class AuthPostLoginMutationCoverage : IClassFixture<PostgresFixture>
         using var scope = f.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
         (await db.Users.IgnoreQueryFilters().AnyAsync(u => u.OidcSub == sub)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Post_login_reads_email_from_standard_claim_when_primary_email_claim_absent()
+    {
+        await using var f = Factory(_pg.ConnectionString);
+        await f.EnsureMigratedAsync();
+        using var client = f.CreateClient(new() { AllowAutoRedirect = false });
+        var sub = "emailfallback-" + Guid.NewGuid().ToString("N");
+        client.DefaultRequestHeaders.Add("X-Test-Sub", sub);
+        client.DefaultRequestHeaders.Add("X-Test-EmailFallback", "dave@waypoint.test");
+
+        var resp = await client.GetAsync("/auth/post-login");
+        ((int)resp.StatusCode).Should().BeInRange(300, 399);
+
+        using var scope = f.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
+        var user = await db.Users.IgnoreQueryFilters().FirstAsync(u => u.OidcSub == sub);
+        user.Email.Should().Be("dave@waypoint.test");
     }
 
     [Fact]
