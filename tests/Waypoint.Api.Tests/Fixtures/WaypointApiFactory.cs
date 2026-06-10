@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Waypoint.Api.Auth;
 using Waypoint.Domain;
@@ -27,6 +28,18 @@ public class WaypointApiFactory : WebApplicationFactory<Program>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+
+        // Each WebApplicationFactory host otherwise registers an inotify file-watcher per JSON
+        // config source (reloadOnChange). xUnit runs test classes in parallel, so dozens of
+        // factories are live at once and the watchers exhaust the CI container's inotify
+        // instance limit (512) — every DB-touching test then throws IOException before it runs.
+        // Tests never hot-reload config, so disable file-watching entirely.
+        builder.ConfigureAppConfiguration((_, config) =>
+        {
+            foreach (var source in config.Sources.OfType<FileConfigurationSource>())
+                source.ReloadOnChange = false;
+        });
+
         builder.ConfigureServices(services =>
         {
             var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<WaypointDbContext>));
