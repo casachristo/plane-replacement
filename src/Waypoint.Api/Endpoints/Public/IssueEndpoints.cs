@@ -79,7 +79,9 @@ public static class IssueEndpoints
         group.MapPost("/{seq:int}/transitions", async (string slug, int seq, TransitionIssueRequest req,
             IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            // WAY-19: writer tokens can edit fields but not move state — 403 unless the caller
+            // holds issue:transition (or admin). Cairn's transition uses an admin token.
+            AuthGuard.RequireTransitionRights(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             if (req.Force && string.IsNullOrWhiteSpace(req.BypassReason))
