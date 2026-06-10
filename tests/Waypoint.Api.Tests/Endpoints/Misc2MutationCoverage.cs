@@ -24,9 +24,13 @@ public class Misc2MutationCoverage : IClassFixture<PostgresFixture>
         var resp = await c.PostAsJsonAsync("/api/admin/tokens",
             new CreateApiTokenRequest("prefix-test", Array.Empty<string>(), "Service"));
         var dto = await resp.Content.ReadFromJsonAsync<ApiTokenCreatedDto>();
-        // Full token format: wpt_<8chars>_<rest>
-        var fullParts = dto!.FullToken.Split(new[] { '_' }, 3);
-        dto.Token.Prefix.Should().Be(fullParts[1]);
+        // Full token format: "wpt_" + 8-char prefix + "_" + secret. The prefix is the first 8
+        // chars of the base64url secret and may itself contain '_' (base64url maps '/' -> '_'),
+        // so it must be read at the fixed offset after the "wpt_" scheme tag — exactly as the
+        // runtime resolver does (ServiceBearerResolver: bearer.Substring(4, 8)). Splitting on '_'
+        // is wrong and was flaky (~12% of tokens) when the prefix contained an underscore.
+        dto!.FullToken.Should().StartWith("wpt_");
+        dto.Token.Prefix.Should().Be(dto.FullToken.Substring(4, 8));
     }
 
     [Fact]

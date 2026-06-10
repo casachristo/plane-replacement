@@ -39,6 +39,7 @@ public static class WebhookPayloads
             @checked = ac.Checked,
             checked_at = ac.CheckedAt,
             checked_by_actor_type = ac.CheckedByActorType?.ToString(),
+            checked_by_actor_id = ac.CheckedByActorId,
             checked_by_actor_label = ac.CheckedByActorLabel,
         },
     };

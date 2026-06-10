@@ -19,6 +19,10 @@ public interface IWebhookPublisher
 
 public sealed class WebhookPublisher : IWebhookPublisher
 {
+    /// <summary>Wire-format version of the webhook envelope. Bump on a breaking payload change;
+    /// documented in docs/webhooks.md.</summary>
+    public const int WebhookEnvelopeVersion = 1;
+
     private static readonly JsonSerializerOptions Json = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -40,6 +44,7 @@ public sealed class WebhookPublisher : IWebhookPublisher
 
         var envelope = new
         {
+            version = WebhookEnvelopeVersion,   // WAY-6: payload schema is versioned (see docs/webhooks.md)
             @event = WebhookEventNames.Wire(evt),
             occurred_at = DateTimeOffset.UtcNow,
             project_id = projectId,
