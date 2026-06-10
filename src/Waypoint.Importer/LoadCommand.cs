@@ -28,11 +28,8 @@ public static class LoadCommand
             await db.SaveChangesAsync();
             report.Projects++;
 
-            var defaultState = new State
-            {
-                ProjectId = project.Id, Name = "Backlog", Group = StateGroup.Backlog,
-                Color = "#94a3b8", SortOrder = 0, IsDefault = true,
-            };
+            // WAY-21: seed a To Do (Unstarted) default — never a Backlog default.
+            var defaultState = PlaneToWaypointMapper.DefaultSeedState(project.Id);
             db.States.Add(defaultState);
             await db.SaveChangesAsync();
             project.DefaultStateId = defaultState.Id;
@@ -53,7 +50,11 @@ public static class LoadCommand
             foreach (var s in statesJson.EnumerateArray())
             {
                 var state = PlaneToWaypointMapper.MapState(s, project.Id);
-                if (state.Name == "Backlog" && state.IsDefault) { stateMap[s.GetProperty("id").GetString()!] = defaultState.Id; continue; }
+                // WAY-21: the seeded To Do is the sole default — import every source state as
+                // non-default (a Plane "Backlog"/default state is preserved as a non-default
+                // Icebox state, not a second default). Issues in it keep pointing at it; the
+                // live collapse to Todo is WAY-22.
+                state.IsDefault = false;
                 db.States.Add(state);
                 await db.SaveChangesAsync();
                 stateMap[s.GetProperty("id").GetString()!] = state.Id;

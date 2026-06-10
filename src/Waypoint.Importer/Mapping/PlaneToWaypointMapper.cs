@@ -28,6 +28,18 @@ public static class PlaneToWaypointMapper
         Identifier = p.GetProperty("identifier").GetString()!,
     };
 
+    /// <summary>
+    /// WAY-21: the importer's seeded default landing state. Mirrors the API's CreateAsync seed
+    /// (To Do / Unstarted), NOT Backlog — the Backlog concept was removed workspace-wide, so a
+    /// re-import must never re-introduce a "Backlog" default. Source backlog-group states still
+    /// import (as non-default Icebox states); only this fabricated default changed.
+    /// </summary>
+    public static State DefaultSeedState(Guid projectId) => new()
+    {
+        ProjectId = projectId, Name = "To Do", Group = StateGroup.Unstarted,
+        Color = "#94a3b8", SortOrder = 0, IsDefault = true,
+    };
+
     public static State MapState(JsonElement s, Guid projectId) => new()
     {
         ProjectId = projectId,
