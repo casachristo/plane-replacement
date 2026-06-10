@@ -17,6 +17,7 @@ public class TokenAuditLogConfiguration : IEntityTypeConfiguration<TokenAuditLog
         builder.Property(a => a.Path).HasMaxLength(500).IsRequired();
         builder.Property(a => a.Method).HasMaxLength(10).IsRequired();
         builder.Property(a => a.Ip).HasMaxLength(64);
+        builder.Property(a => a.TokenKind).HasConversion<int?>();   // WAY-5: stored as nullable int, matches ApiToken.Kind
         builder.Property(a => a.At).HasDefaultValueSql("now()");
         builder.HasOne(a => a.Token).WithMany().HasForeignKey(a => a.TokenId)
             .OnDelete(DeleteBehavior.Cascade);

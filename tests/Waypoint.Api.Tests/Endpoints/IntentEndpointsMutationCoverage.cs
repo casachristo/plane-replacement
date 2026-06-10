@@ -1,8 +1,10 @@
 using System.Net;
 using System.Net.Http.Json;
 using FluentAssertions;
+using Microsoft.Extensions.DependencyInjection;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Endpoints.InternalApi;
+using Waypoint.Api.Repositories;
 using Waypoint.Api.Tests.Fixtures;
 using Waypoint.Contracts;
 using Waypoint.Domain;
@@ -36,11 +38,14 @@ public class IntentEndpointsMutationCoverage : IClassFixture<PostgresFixture>
         // Default Human principal (admin scope etc.).
     };
 
-    private static async Task EnsureProject(HttpClient client, string slug, string ident)
+    private static async Task EnsureProject(WaypointApiFactory factory, string slug, string ident)
     {
-        // POST against the internal surface so the Bearer-rejection rules don't trip.
-        await client.PostAsJsonAsync("/internal/v1/projects",
-            new CreateProjectRequest(slug, "Test", ident));
+        // Provisioning a project is an admin-tier operation (WAY-5), so seed it via the
+        // repository rather than the now admin-gated HTTP POST — the service principal under
+        // test is a limited token that files intents, not one that creates projects.
+        using var scope = factory.Services.CreateScope();
+        var repo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
+        await repo.CreateAsync(slug, "Test", ident, CancellationToken.None);
     }
 
     [Fact]
@@ -95,7 +100,7 @@ public class IntentEndpointsMutationCoverage : IClassFixture<PostgresFixture>
         };
         await factory.EnsureMigratedAsync();
         using var client = factory.CreateClient();
-        await EnsureProject(client, "intp1", "INTP1");
+        await EnsureProject(factory, "intp1", "INTP1");
         var resp = await client.PostAsJsonAsync(
             "/internal/v1/projects/intp1/intents",
             new FileIntentRequest("/src/Foo", "implement Foo"));

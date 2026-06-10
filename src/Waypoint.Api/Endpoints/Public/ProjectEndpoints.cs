@@ -15,7 +15,9 @@ public static class ProjectEndpoints
 
         group.MapPost("/", async (CreateProjectRequest req, IProjectRepository repo, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            // WAY-5: project creation is an admin-tier operation — a limited (Service) token must
+            // not be able to spin up projects. Admin tokens carry the synthetic "admin" scope.
+            AuthGuard.RequireScope(ctx, "admin");
             var p = await repo.CreateAsync(req.Slug, req.Name, req.Identifier, ct);
             var dto = new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt);
             return Results.Created($"{prefix}/{p.Slug}", dto);

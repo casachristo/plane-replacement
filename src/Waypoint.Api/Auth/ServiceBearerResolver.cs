@@ -49,7 +49,8 @@ public sealed class ServiceBearerResolver : IPrincipalResolver
                     DisplayName: token.Name,
                     Scopes: scopes,
                     PassthroughActorId: string.IsNullOrEmpty(passthroughId) ? null : passthroughId.ToString(),
-                    PassthroughActorLabel: string.IsNullOrEmpty(passthroughLabel) ? null : passthroughLabel.ToString());
+                    PassthroughActorLabel: string.IsNullOrEmpty(passthroughLabel) ? null : passthroughLabel.ToString(),
+                    TokenKind: token.Kind);
             }
         }
         return null;

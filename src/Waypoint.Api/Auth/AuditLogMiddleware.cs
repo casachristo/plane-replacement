@@ -23,6 +23,7 @@ public sealed class AuditLogMiddleware
         db.TokenAuditLog.Add(new TokenAuditLog
         {
             TokenId = tokenId,
+            TokenKind = principal.TokenKind,   // WAY-5: record the tier behind this call
             PassthroughActorId = principal.PassthroughActorId,
             PassthroughActorLabel = principal.PassthroughActorLabel,
             Action = $"{ctx.Request.Method} {ctx.Request.Path}",

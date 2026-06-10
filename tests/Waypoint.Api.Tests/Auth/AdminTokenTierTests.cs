@@ -64,4 +64,30 @@ public class AdminTokenTierTests : IClassFixture<PostgresFixture>
             principal.Kind.Should().Be(PrincipalKind.InternalService);
         }
     }
+
+    [Fact]
+    public async Task Admin_kind_token_carries_TokenKind_Admin_on_principal()
+    {
+        // WAY-5: the resolved principal exposes the tier so the audit log can record it per call.
+        var (factory, full) = await MintToken(_pg, "admin-tier", TokenKind.Admin, []);
+        await using (factory)
+        {
+            var principal = await Resolve(factory, full);
+            principal!.TokenKind.Should().Be(TokenKind.Admin);
+        }
+    }
+
+    [Fact]
+    public async Task Service_kind_token_carries_TokenKind_Service_and_no_admin_scope()
+    {
+        // WAY-5: a limited (Service) token is the mint-time default; it must NOT gain admin.
+        var (factory, full) = await MintToken(_pg, "limited-writer", TokenKind.Service, ["issue:write"]);
+        await using (factory)
+        {
+            var principal = await Resolve(factory, full);
+            principal.Should().NotBeNull();
+            principal!.TokenKind.Should().Be(TokenKind.Service);
+            principal.Scopes.Should().NotContain("admin");
+        }
+    }
 }
