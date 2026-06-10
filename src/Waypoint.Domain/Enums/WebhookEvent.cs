@@ -22,6 +22,7 @@ public enum WebhookEvent : long
     AcceptanceCriterionDeleted    = 1L << 8,
     GateOverrideFired             = 1L << 9,
     CommentCreated                = 1L << 10,
+    WorklistCurrentAdvanced       = 1L << 11,
     All                           = ~0L,
 }
 
@@ -40,6 +41,7 @@ public static class WebhookEventNames
         WebhookEvent.AcceptanceCriterionDeleted   => "issue.acceptance_criterion.deleted",
         WebhookEvent.GateOverrideFired            => "gate.override_fired",
         WebhookEvent.CommentCreated               => "comment.created",
+        WebhookEvent.WorklistCurrentAdvanced      => "worklist.current_advanced",
         _ => "unknown",
     };
 }

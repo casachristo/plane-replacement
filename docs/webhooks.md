@@ -52,6 +52,7 @@ Deliveries are retried with backoff (1m, 5m, 30m, 2h, 12h) and then dead-lettere
 | `issue.acceptance_criterion.deleted`   | `{ issue, acceptance_criterion }`                |
 | `gate.override_fired`                  | `{ issue, gate_name, reason, actor_*, at }`      |
 | `comment.created`                      | `{ issue, comment }`                             |
+| `worklist.current_advanced`            | `{ project, previous_current, new_current, state, remaining_count, done_count, skipped_count, trigger, reason? }` |
 
 ### `state` / `previous_state` / `new_state` (WAY-6)
 

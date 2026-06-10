@@ -56,6 +56,10 @@ public sealed class ProjectRepository : IProjectRepository
             _db.IssueTypes.Add(issueType);
             await _db.SaveChangesAsync(ct);
 
+            // WAY-17: every project gets its singleton batch Worklist, dormant until Cairn starts it.
+            _db.Set<Worklist>().Add(new Worklist { ProjectId = project.Id, State = WorklistState.Inactive });
+            await _db.SaveChangesAsync(ct);
+
             return project;
         }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: "23505" })

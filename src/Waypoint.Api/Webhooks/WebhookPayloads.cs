@@ -44,6 +44,27 @@ public static class WebhookPayloads
         },
     };
 
+    public static IssueRef? RefOrNull(Issue? i) => i is null ? null : From(i);
+
+    /// <summary>
+    /// WAY-18: fired whenever a worklist's current pointer changes (advance / skip / drained),
+    /// so observers follow batch-run progress without polling the internal endpoint.
+    /// </summary>
+    public static object WorklistAdvanced(
+        Project project, Issue? previousCurrent, Issue? newCurrent, Worklist worklist,
+        string trigger, string? reason) => new
+    {
+        project = new { id = project.Id, slug = project.Slug, identifier = project.Identifier },
+        previous_current = RefOrNull(previousCurrent),
+        new_current = RefOrNull(newCurrent),
+        state = worklist.State.ToString().ToLowerInvariant(),
+        remaining_count = worklist.RemainingCount,
+        done_count = worklist.DoneCount,
+        skipped_count = worklist.SkippedCount,
+        trigger,
+        reason,
+    };
+
     public static object GateOverride(GateOverrideEvent g, IssueRef issue) => new
     {
         issue,

@@ -55,6 +55,7 @@ builder.Services.AddScoped<Waypoint.Api.Webhooks.IWebhookPublisher, Waypoint.Api
 builder.Services.AddScoped<IIssueRepository, IssueRepository>();
 builder.Services.AddScoped<ICommentRepository, CommentRepository>();
 builder.Services.AddScoped<IIntentRepository, IntentRepository>();
+builder.Services.AddScoped<IWorklistRepository, WorklistRepository>();
 // Order matters: the middleware takes the FIRST resolver that returns a principal.
 // Authelia SSO header (when trusted) identifies a human first; then the waypoint_session
 // cookie; then a service bearer token for API clients.
@@ -202,6 +203,7 @@ app.MapEpicEndpoints("/internal/v1/projects");
 app.MapCommentEndpoints("/internal/v1/projects");
 app.MapAcceptanceCriterionEndpoints("/internal/v1/projects");
 app.MapIntentEndpoints();
+app.MapWorklistEndpoints();   // WAY-17: internal-only, service-token-gated batch queue
 
 if (app.Environment.EnvironmentName == "Testing")
 {
