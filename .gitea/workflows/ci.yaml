@@ -14,6 +14,14 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# xUnit runs test classes in parallel, each spinning a WebApplicationFactory host whose file
+# providers (config + DataProtection + content root) register inotify watchers — dozens of
+# concurrent factories exhaust the runner container's inotify instance limit (512), failing
+# random DB tests with "configured user limit (512) ... inotify instances". Force every .NET
+# process to a POLLING file watcher so it consumes zero inotify instances regardless of host.
+env:
+  DOTNET_USE_POLLING_FILE_WATCHER: "true"
+
 jobs:
   test:
     runs-on: ubuntu-latest
