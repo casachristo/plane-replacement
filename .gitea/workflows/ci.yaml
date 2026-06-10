@@ -24,7 +24,9 @@ jobs:
           POSTGRES_DB: waypoint
           POSTGRES_USER: waypoint
           POSTGRES_PASSWORD: waypoint
-        ports: ["5432:5432"]
+        # No host port mapping: tests/smoke-check reach the service by its DNS name
+        # (WAYPOINT_TEST_PG_HOST=postgres), and binding host :5432 collides when the test
+        # and mutation-api-auth jobs run back-to-back on the single runner.
         options: >-
           --health-cmd "pg_isready -U waypoint"
           --health-interval 2s
@@ -81,7 +83,9 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env: { POSTGRES_DB: waypoint, POSTGRES_USER: waypoint, POSTGRES_PASSWORD: waypoint }
-        ports: ["5432:5432"]
+        # No host port mapping: tests/smoke-check reach the service by its DNS name
+        # (WAYPOINT_TEST_PG_HOST=postgres), and binding host :5432 collides when the test
+        # and mutation-api-auth jobs run back-to-back on the single runner.
         options: >-
           --health-cmd "pg_isready -U waypoint"
           --health-interval 2s
