@@ -5,7 +5,7 @@ if (args.Length == 0)
     Console.Error.WriteLine("""
         Usage:
           dump --plane-base <url> --plane-key <key> --workspace <slug> --out <dir>
-          load --dump <dir> --waypoint-db <connStr> [--mode dry-run|execute]
+          load --dump <dir> --waypoint-db <connStr> [--mode dry-run|execute] [--parse-acceptance]
         """);
     return 2;
 }
@@ -20,7 +20,8 @@ return args[0] switch
     "load" => await LoadCommand.RunAsync(
         Arg("--dump") ?? throw new ArgumentException("--dump required"),
         Arg("--waypoint-db") ?? throw new ArgumentException("--waypoint-db required"),
-        (Arg("--mode") ?? "dry-run") == "dry-run"),
+        (Arg("--mode") ?? "dry-run") == "dry-run",
+        Flag("--parse-acceptance")),
     _ => 2,
 };
 
@@ -30,3 +31,5 @@ string? Arg(string name)
         if (args[i] == name) return args[i + 1];
     return null;
 }
+
+bool Flag(string name) => Array.IndexOf(args, name) >= 0;

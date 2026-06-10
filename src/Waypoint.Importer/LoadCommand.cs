@@ -9,7 +9,7 @@ namespace Waypoint.Importer;
 
 public static class LoadCommand
 {
-    public static async Task<int> RunAsync(string dumpDir, string connStr, bool dryRun)
+    public static async Task<int> RunAsync(string dumpDir, string connStr, bool dryRun, bool parseAcceptance = false)
     {
         var report = new LoadReport();
         var options = new DbContextOptionsBuilder<WaypointDbContext>()
@@ -114,6 +114,23 @@ public static class LoadCommand
                 await db.SaveChangesAsync();
                 report.Issues++;
 
+                // WAY-7: opt-in — turn Markdown `- [ ]` checkboxes in the description into
+                // first-class acceptance-criterion rows. One-time at import; off by default.
+                if (parseAcceptance)
+                {
+                    var criteria = PlaneToWaypointMapper.ParseAcceptanceCriteria(issue.DescriptionMd);
+                    foreach (var ac in criteria)
+                    {
+                        ac.IssueId = issue.Id;
+                        db.Set<AcceptanceCriterion>().Add(ac);
+                    }
+                    if (criteria.Count > 0)
+                    {
+                        await db.SaveChangesAsync();
+                        report.AcceptanceCriteria += criteria.Count;
+                    }
+                }
+
                 var planeIssueId = iJson.GetProperty("id").GetString()!;
                 var issueDir = Path.Combine(projDir, "issues", planeIssueId);
                 if (!Directory.Exists(issueDir)) continue;
@@ -182,6 +199,7 @@ public sealed class LoadReport
     public int Issues { get; set; }
     public int Comments { get; set; }
     public int Activities { get; set; }
+    public int AcceptanceCriteria { get; set; }
     private readonly Dictionary<Guid, int> _epicsByProject = new();
 
     public int EpicsByProject(Guid projectId)
@@ -193,5 +211,6 @@ public sealed class LoadReport
 
     public override string ToString() =>
         $"Projects={Projects} States={States} IssueTypes={IssueTypes} Epics={Epics} " +
-        $"Labels={Labels} Issues={Issues} Comments={Comments} Activities={Activities}";
+        $"Labels={Labels} Issues={Issues} Comments={Comments} Activities={Activities} " +
+        $"AcceptanceCriteria={AcceptanceCriteria}";
 }

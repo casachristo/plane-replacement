@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Waypoint.Domain.Entities;
 using Waypoint.Domain.Enums;
 using RmConverter = ReverseMarkdown.Converter;
@@ -87,6 +88,39 @@ public static class PlaneToWaypointMapper
     {
         if (!parent.TryGetProperty(property, out var prop) || prop.ValueKind == JsonValueKind.Null) return null;
         return prop.GetRawText();
+    }
+
+    // WAY-7: a Plane ticket carries its acceptance criteria as Markdown checkbox lines
+    // (`- [ ]` / `- [x]`). Opt-in at import time, these become first-class AcceptanceCriterion
+    // rows so the gate (WAY-4) and UI can reason about them structurally instead of re-parsing
+    // Markdown forever. The match is line-anchored and accepts -, * or + bullets.
+    private static readonly Regex CheckboxLine = new(
+        @"^\s*[-*+]\s+\[(?<mark>[ xX])\]\s+(?<text>.+?)\s*$",
+        RegexOptions.Compiled);
+
+    /// <summary>
+    /// Parses Markdown task-list checkboxes out of a description into ordered AcceptanceCriterion
+    /// entities (IssueId left unset for the caller to assign). Non-checkbox lines are ignored.
+    /// Pure — no DB, no clock.
+    /// </summary>
+    public static List<AcceptanceCriterion> ParseAcceptanceCriteria(string? descriptionMd)
+    {
+        var result = new List<AcceptanceCriterion>();
+        if (string.IsNullOrEmpty(descriptionMd)) return result;
+
+        var position = 0;
+        foreach (var line in descriptionMd.Split('\n'))
+        {
+            var m = CheckboxLine.Match(line);
+            if (!m.Success) continue;
+            result.Add(new AcceptanceCriterion
+            {
+                Position = ++position,
+                Text = m.Groups["text"].Value,
+                Checked = m.Groups["mark"].Value is "x" or "X",
+            });
+        }
+        return result;
     }
 
     /// <summary>Detects label hacks: name starts with "type:", "epic:" → returns (kind, stripped-name).</summary>
