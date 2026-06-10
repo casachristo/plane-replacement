@@ -32,6 +32,32 @@ kubectl -n media exec deploy/waypoint-api -- \
 # Save the printed token into Cairn's secret store.
 ```
 
+## Portability (WAY-16)
+
+Waypoint owns its own Postgres and has no hard dependency on homelab-specific
+infrastructure — it deploys independently to other hardware/cloud by overriding
+chart values and providing the externalized Secrets. Verification:
+
+| Dependency       | How it's parameterized                                              | Secret |
+|------------------|--------------------------------------------------------------------|--------|
+| Postgres         | `ConnectionStrings:Postgres` from `waypoint-config`; in-chart `postgres.*` | `waypoint-config` |
+| OIDC provider    | `Oidc:Authority` / `ClientId` / `RedirectUri` (chart `api.oidc.*`)  | `client_secret` in `waypoint-oidc` |
+| Ingress host     | `ingress.host`                                                      | TLS in `waypoint-tls` |
+| Backup target    | `backup.s3.endpoint` (chart); credentials in `waypoint-config`      | `s3-token` |
+| Container images | `api.image` / `web.image` (any registry)                           | n/a |
+
+- **No secrets are baked into `values.yaml` or `appsettings.json`** — every
+  credential is sourced from an out-of-band Kubernetes Secret (see
+  `templates/secrets-template.yaml`); works with external-secrets / sealed-secrets.
+- The only homelab values are convenience fallbacks in app config
+  (`Oidc:Authority` defaults to `https://auth.chris.box`, client id `waypoint`).
+  A foreign deployment overrides them via `api.oidc.*` chart values — they are not
+  required to be homelab values.
+
+To deploy elsewhere: set `ingress.host`, `api.oidc.authority` + `redirectUri`,
+point `ConnectionStrings:Postgres` at your DB (or keep the in-chart Postgres),
+provide the three Secrets, and push the images to any registry.
+
 ## Cutover (Phase 6 — destructive, not automated)
 
 See `docs/superpowers/specs/2026-05-30-waypoint-design.md § Cutover`.
