@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [main]
 
+# The homelab runs a single Actions runner sharing one docker daemon. Overlapping runs
+# (rapid successive pushes) collide bringing up the postgres service container — the job
+# then fails in ~3s before any test runs. Serialize per-ref and cancel superseded runs so
+# only the newest commit's pipeline holds the runner at a time.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
