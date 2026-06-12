@@ -24,7 +24,7 @@ export default async function ProfilePage() {
       <div className="flex items-center gap-3">
         <h1 className="text-2xl font-semibold">{me.displayName}</h1>
         {isAdmin && (
-          <span className="px-2 py-0.5 rounded text-xs bg-[var(--accent)] text-black font-medium">admin</span>
+          <span className="px-2 py-0.5 rounded text-xs bg-[var(--accent)] text-[var(--accent-contrast)] font-medium">admin</span>
         )}
       </div>
 

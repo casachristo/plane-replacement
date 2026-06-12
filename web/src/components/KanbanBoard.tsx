@@ -78,7 +78,7 @@ export function KanbanBoard({
               <button
                 key={g}
                 onClick={() => setGroupBy(g)}
-                className={`px-2 py-1 capitalize ${groupBy === g ? 'bg-[var(--accent)] text-black' : ''}`}
+                className={`px-2 py-1 capitalize ${groupBy === g ? 'bg-[var(--accent)] text-[var(--accent-contrast)]' : ''}`}
               >
                 {g}
               </button>

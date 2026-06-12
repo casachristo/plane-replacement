@@ -35,7 +35,7 @@ export function CreateProjectButton() {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="px-4 py-2 rounded bg-[var(--accent)] text-black font-medium text-sm"
+        className="px-4 py-2 rounded bg-[var(--accent)] text-[var(--accent-contrast)] font-medium text-sm"
       >
         + New project
       </button>
@@ -77,7 +77,7 @@ export function CreateProjectButton() {
       <div className="flex gap-2">
         <button
           type="submit" disabled={pending}
-          className="px-3 py-1.5 rounded bg-[var(--accent)] text-black text-sm font-medium disabled:opacity-50"
+          className="px-3 py-1.5 rounded bg-[var(--accent)] text-[var(--accent-contrast)] text-sm font-medium disabled:opacity-50"
         >
           {pending ? 'Creating…' : 'Create'}
         </button>

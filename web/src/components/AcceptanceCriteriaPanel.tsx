@@ -140,7 +140,7 @@ export function AcceptanceCriteriaPanel({
           />
           <button
             type="submit" disabled={pending}
-            className="px-3 py-1 rounded bg-[var(--accent)] text-black text-sm font-medium disabled:opacity-50"
+            className="px-3 py-1 rounded bg-[var(--accent)] text-[var(--accent-contrast)] text-sm font-medium disabled:opacity-50"
           >
             Add
           </button>

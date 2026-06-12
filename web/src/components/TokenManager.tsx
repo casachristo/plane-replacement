@@ -89,7 +89,7 @@ export function TokenManager({ initial }: { initial: ApiToken[] }) {
         </div>
         {err && <p className="text-sm text-red-400">{err}</p>}
         <button onClick={create} disabled={busy}
-          className="px-4 py-2 rounded bg-[var(--accent)] text-black font-medium disabled:opacity-50">
+          className="px-4 py-2 rounded bg-[var(--accent)] text-[var(--accent-contrast)] font-medium disabled:opacity-50">
           {busy ? 'Creating…' : 'Create token'}
         </button>
       </div>

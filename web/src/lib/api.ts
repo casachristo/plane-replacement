@@ -92,7 +92,11 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T | null>
 }
 
 export async function whoami(): Promise<Me | null> {
-  return fetchJson<Me>('/api/v1/whoami');
+  try {
+    return await fetchJson<Me>('/api/v1/whoami');
+  } catch {
+    return null;
+  }
 }
 
 export type ApiToken = {

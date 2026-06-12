@@ -20,13 +20,13 @@ export default async function HomePage() {
           <div className="text-sm text-[var(--muted)]">
             Signed in as <span className="text-[var(--foreground)] font-medium">{me.displayName}</span>
             {isAdmin && (
-              <span className="ml-2 px-2 py-0.5 rounded text-xs bg-[var(--accent)] text-black font-medium">
+              <span className="ml-2 px-2 py-0.5 rounded text-xs bg-[var(--accent)] text-[var(--accent-contrast)] font-medium">
                 admin
               </span>
             )}
           </div>
           <div className="flex gap-3">
-            <a href="/projects" className="px-4 py-2 rounded bg-[var(--accent)] text-black font-medium">
+            <a href="/projects" className="px-4 py-2 rounded bg-[var(--accent)] text-[var(--accent-contrast)] font-medium">
               Browse projects
             </a>
             <a href="/profile" className="px-4 py-2 rounded border border-[var(--border)]">
@@ -36,7 +36,7 @@ export default async function HomePage() {
         </div>
       ) : (
         <div className="flex gap-3">
-          <a href="/projects" className="px-4 py-2 rounded bg-[var(--accent)] text-black font-medium">
+          <a href="/projects" className="px-4 py-2 rounded bg-[var(--accent)] text-[var(--accent-contrast)] font-medium">
             Browse projects
           </a>
           <a href="/auth/login" className="px-4 py-2 rounded border border-[var(--border)]">
