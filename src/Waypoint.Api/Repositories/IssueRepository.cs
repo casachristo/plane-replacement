@@ -51,7 +51,7 @@ public sealed class IssueRepository : IIssueRepository
         }
     }
 
-    public async Task<Issue> CreateAsync(Guid projectId, string title, string descriptionMd, Guid? issueTypeId, CancellationToken ct)
+    public async Task<Issue> CreateAsync(Guid projectId, string title, string descriptionMd, Guid? issueTypeId, Guid? epicId, Guid? cycleId, CancellationToken ct)
     {
         var project = await _db.Projects.FindAsync([projectId], ct)
             ?? throw new NotFoundException("project_not_found", "Project not found.");
@@ -64,6 +64,11 @@ public sealed class IssueRepository : IIssueRepository
             .FirstOrDefaultAsync(ct)
             ?? throw new ConflictException("project_has_no_default_issue_type", "Project has no default issue type.");
 
+        if (epicId is { } eid && !await _db.Set<Epic>().AnyAsync(e => e.Id == eid && e.ProjectId == projectId, ct))
+            throw new NotFoundException("epic_not_found", "Epic not found in this project.");
+        if (cycleId is { } cid && !await _db.Set<Cycle>().AnyAsync(c => c.Id == cid && c.ProjectId == projectId, ct))
+            throw new NotFoundException("cycle_not_found", "Cycle not found in this project.");
+
         var seq = await NextSequenceAsync(projectId, ct);
         var issue = new Issue
         {
@@ -73,6 +78,8 @@ public sealed class IssueRepository : IIssueRepository
             DescriptionMd = descriptionMd,
             StateId = project.DefaultStateId.Value,
             IssueTypeId = typeId,
+            EpicId = epicId,
+            CycleId = cycleId,
         };
         _db.Issues.Add(issue);
         await _db.SaveChangesAsync(ct);
@@ -96,6 +103,8 @@ public sealed class IssueRepository : IIssueRepository
         _db.Issues.AsNoTracking()
             .Include(i => i.State)
             .Include(i => i.IssueType)
+            .Include(i => i.Epic)
+            .Include(i => i.Cycle)
             .FirstOrDefaultAsync(i => i.ProjectId == projectId && i.SequenceId == seq, ct);
 
     public async Task<Issue> TransitionAsync(Guid projectId, int seq, Guid toStateId, bool force, string? bypassReason, Principal? actor, CancellationToken ct)

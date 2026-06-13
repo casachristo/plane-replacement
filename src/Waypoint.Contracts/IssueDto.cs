@@ -12,6 +12,8 @@ public sealed record IssueDto(
     int Priority,
     Guid? EpicId,
     string? EpicTitle,
+    Guid? CycleId,
+    string? CycleName,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt)
 {

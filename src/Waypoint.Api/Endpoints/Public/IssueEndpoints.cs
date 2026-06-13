@@ -20,7 +20,7 @@ public static class IssueEndpoints
             AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var issue = await issues.CreateAsync(project.Id, req.Title, req.DescriptionMd, req.IssueTypeId, ct);
+            var issue = await issues.CreateAsync(project.Id, req.Title, req.DescriptionMd, req.IssueTypeId, req.EpicId, req.CycleId, ct);
             var withIncludes = await issues.GetBySequenceAsync(project.Id, issue.SequenceId, ct);
             return Results.Created($"{projectsPrefix}/{slug}/issues/{issue.SequenceId}", ToDto(withIncludes!));
         });
@@ -73,6 +73,26 @@ public static class IssueEndpoints
             issue.EpicId = req.EpicId;
             await db.SaveChangesAsync(ct);
             if (issue.EpicId is not null) await db.Entry(issue).Reference(i => i.Epic).LoadAsync(ct);
+            return Results.Ok(ToDto(issue));
+        });
+
+        // Assign (or unassign, with cycleId=null) an issue's cycle/milestone — the sprint
+        // dimension, parallel to /epic above.
+        group.MapPut("/{seq:int}/cycle", async (string slug, int seq, AssignCycleRequest req,
+            IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+        {
+            AuthGuard.RequireAuth(ctx);
+            var project = await projects.GetBySlugAsync(slug, ct)
+                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
+            if (req.CycleId is { } cycleId &&
+                !await db.Set<Cycle>().AnyAsync(c => c.Id == cycleId && c.ProjectId == project.Id, ct))
+                throw new NotFoundException("cycle_not_found", "Cycle not found in this project.");
+            var issue = await db.Issues.Include(i => i.State).Include(i => i.IssueType).Include(i => i.Epic)
+                .FirstOrDefaultAsync(i => i.ProjectId == project.Id && i.SequenceId == seq, ct)
+                ?? throw new NotFoundException("issue_not_found", $"Issue {project.Identifier}-{seq} not found.");
+            issue.CycleId = req.CycleId;
+            await db.SaveChangesAsync(ct);
+            if (issue.CycleId is not null) await db.Entry(issue).Reference(i => i.Cycle).LoadAsync(ct);
             return Results.Ok(ToDto(issue));
         });
 
@@ -133,5 +153,6 @@ public static class IssueEndpoints
         i.IssueTypeId, i.IssueType.Name,
         (int)i.Priority,
         i.EpicId, i.Epic?.Title,   // module (epic): EpicId always set; Title only when Epic is included
+        i.CycleId, i.Cycle?.Name,  // milestone (cycle): same include rule as Epic
         i.CreatedAt, i.UpdatedAt);
 }

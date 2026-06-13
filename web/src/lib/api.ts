@@ -45,6 +45,8 @@ export type Issue = {
   priority: number;
   epicId: string | null;
   epicTitle: string | null;
+  cycleId: string | null;
+  cycleName: string | null;
   createdAt: string;
   updatedAt: string;
   acceptanceCriteria?: AcceptanceCriterion[];

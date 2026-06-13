@@ -201,4 +201,105 @@ public class IssueEndpointsTests : IClassFixture<PostgresFixture>
         events!.Should().NotBeEmpty();
         events.Should().Contain(e => e.Verb == "created");
     }
+
+    [Fact]
+    public async Task POST_creates_issue_assigned_to_epic_and_cycle()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest("ec-proj", "EC", "ECT"));
+
+        Guid epicId, cycleId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Waypoint.Domain.WaypointDbContext>();
+            var project = db.Projects.Single(p => p.Slug == "ec-proj");
+            var epic = new Waypoint.Domain.Entities.Epic { ProjectId = project.Id, SequenceId = 1, Title = "Arch Studio" };
+            var cycle = new Waypoint.Domain.Entities.Cycle { ProjectId = project.Id, Name = "Sprint 1", StartDate = DateTimeOffset.UtcNow, EndDate = DateTimeOffset.UtcNow.AddDays(14) };
+            db.Add(epic); db.Add(cycle); db.SaveChanges();
+            epicId = epic.Id; cycleId = cycle.Id;
+        }
+
+        var resp = await client.PostAsJsonAsync("/api/v1/projects/ec-proj/issues",
+            new CreateIssueRequest("Tagged", "body", EpicId: epicId, CycleId: cycleId));
+        resp.StatusCode.Should().Be(HttpStatusCode.Created);
+        var dto = await resp.Content.ReadFromJsonAsync<IssueDto>();
+        dto!.EpicId.Should().Be(epicId);
+        dto.EpicTitle.Should().Be("Arch Studio");
+        dto.CycleId.Should().Be(cycleId);
+        dto.CycleName.Should().Be("Sprint 1");
+    }
+
+    [Fact]
+    public async Task POST_returns_404_when_epic_not_in_project()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest("ep404-proj", "E4", "EPF"));
+
+        var resp = await client.PostAsJsonAsync("/api/v1/projects/ep404-proj/issues",
+            new CreateIssueRequest("Bad epic", "body", EpicId: Guid.NewGuid()));
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task POST_returns_404_when_cycle_not_in_project()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest("cy404-proj", "C4", "CYF"));
+
+        var resp = await client.PostAsJsonAsync("/api/v1/projects/cy404-proj/issues",
+            new CreateIssueRequest("Bad cycle", "body", CycleId: Guid.NewGuid()));
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task PUT_cycle_assigns_then_unassigns()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest("pc-proj", "PC", "PCY"));
+
+        Guid cycleId;
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Waypoint.Domain.WaypointDbContext>();
+            var project = db.Projects.Single(p => p.Slug == "pc-proj");
+            var cycle = new Waypoint.Domain.Entities.Cycle { ProjectId = project.Id, Name = "M1", StartDate = DateTimeOffset.UtcNow, EndDate = DateTimeOffset.UtcNow.AddDays(7) };
+            db.Add(cycle); db.SaveChanges();
+            cycleId = cycle.Id;
+        }
+        var issue = await (await client.PostAsJsonAsync("/api/v1/projects/pc-proj/issues",
+            new CreateIssueRequest("C1", "body"))).Content.ReadFromJsonAsync<IssueDto>();
+
+        var assign = await client.PutAsJsonAsync($"/api/v1/projects/pc-proj/issues/{issue!.Sequence}/cycle",
+            new AssignCycleRequest(cycleId));
+        assign.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await assign.Content.ReadFromJsonAsync<IssueDto>())!.CycleId.Should().Be(cycleId);
+
+        var unassign = await client.PutAsJsonAsync($"/api/v1/projects/pc-proj/issues/{issue.Sequence}/cycle",
+            new AssignCycleRequest(null));
+        unassign.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await unassign.Content.ReadFromJsonAsync<IssueDto>())!.CycleId.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task PUT_cycle_returns_404_for_unknown_cycle()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest("uc-proj", "UC", "UCY"));
+        var issue = await (await client.PostAsJsonAsync("/api/v1/projects/uc-proj/issues",
+            new CreateIssueRequest("U1", "body"))).Content.ReadFromJsonAsync<IssueDto>();
+
+        var resp = await client.PutAsJsonAsync($"/api/v1/projects/uc-proj/issues/{issue!.Sequence}/cycle",
+            new AssignCycleRequest(Guid.NewGuid()));
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
 }

@@ -5,7 +5,7 @@ namespace Waypoint.Api.Repositories;
 
 public interface IIssueRepository
 {
-    Task<Issue> CreateAsync(Guid projectId, string title, string descriptionMd, Guid? issueTypeId, CancellationToken ct);
+    Task<Issue> CreateAsync(Guid projectId, string title, string descriptionMd, Guid? issueTypeId, Guid? epicId, Guid? cycleId, CancellationToken ct);
     Task<Issue?> GetBySequenceAsync(Guid projectId, int seq, CancellationToken ct);
     Task<Issue> TransitionAsync(Guid projectId, int seq, Guid toStateId, bool force, string? bypassReason, Principal? actor, CancellationToken ct);
     Task<Issue> UpdateAsync(Guid projectId, int seq, string? title, string? descriptionMd, int? priority, CancellationToken ct);

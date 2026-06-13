@@ -12,5 +12,6 @@ public static class IssueMapper
         i.IssueTypeId, i.IssueType.Name,
         (int)i.Priority,
         i.EpicId, i.Epic?.Title,
+        i.CycleId, i.Cycle?.Name,
         i.CreatedAt, i.UpdatedAt);
 }
