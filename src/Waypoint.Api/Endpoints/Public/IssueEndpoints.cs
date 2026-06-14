@@ -1,13 +1,17 @@
 using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
-using Waypoint.Api.Pagination;
 using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Issues;
+using Waypoint.Api.Subsystems.Issues.IssueCrud;
 using Waypoint.Contracts;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
 
 namespace Waypoint.Api.Endpoints.PublicApi;
 
+// Thin HTTP adapter over the Issues subsystem (the API layer is exempt from the pattern):
+// authenticate and delegate to IIssueService / IIssuesOrchestrator. The epic/cycle assign and
+// activity reads remain db-inline pending their feature extraction (WAY-41 continuation).
 public static class IssueEndpoints
 {
     public static void MapIssueEndpoints(this IEndpointRouteBuilder app, string projectsPrefix)
@@ -15,27 +19,18 @@ public static class IssueEndpoints
         var group = app.MapGroup($"{projectsPrefix}/{{slug}}/issues");
 
         group.MapPost("/", async (string slug, CreateIssueRequest req,
-            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
+            IIssueService issues, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:create");
-            var project = await projects.GetBySlugAsync(slug, ct)
-                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var category = Waypoint.Domain.Enums.TicketCategory.Feature;
-            if (!string.IsNullOrWhiteSpace(req.Category) && !TicketCategories.TryParse(req.Category, out category))
-                throw new ValidationException("invalid_category", $"Unknown ticket category '{req.Category}'.");
-            var issue = await issues.CreateAsync(project.Id, req.Title, req.DescriptionMd, req.IssueTypeId, req.EpicId, req.CycleId, category, ct);
-            var withIncludes = await issues.GetBySequenceAsync(project.Id, issue.SequenceId, ct);
-            return Results.Created($"{projectsPrefix}/{slug}/issues/{issue.SequenceId}", ToDto(withIncludes!));
+            var dto = await issues.CreateAsync(slug, req, ct);
+            return Results.Created($"{projectsPrefix}/{slug}/issues/{dto.Sequence}", dto);
         });
 
         group.MapGet("/{seq:int}", async (string slug, int seq,
-            IProjectRepository projects, IIssueRepository issues, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+            IIssueService issues, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireAuth(ctx);
-            var project = await projects.GetBySlugAsync(slug, ct)
-                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var issue = await issues.GetBySequenceAsync(project.Id, seq, ct)
-                ?? throw new NotFoundException("issue_not_found", $"Issue {project.Identifier}-{seq} not found.");
+            var issue = await issues.ResolveAsync(slug, seq, ct);
             var ac = await db.Set<AcceptanceCriterion>().AsNoTracking()
                 .Where(a => a.IssueId == issue.Id)
                 .OrderBy(a => a.Position)
@@ -50,13 +45,10 @@ public static class IssueEndpoints
         });
 
         group.MapPatch("/{seq:int}", async (string slug, int seq, UpdateIssueRequest req,
-            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
+            IIssueService issues, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:write");
-            var project = await projects.GetBySlugAsync(slug, ct)
-                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var updated = await issues.UpdateAsync(project.Id, seq, req.Title, req.DescriptionMd, req.Priority, ct);
-            return Results.Ok(ToDto(updated));
+            return Results.Ok(await issues.UpdateAsync(slug, seq, req, ct));
         });
 
         // Assign (or unassign, with epicId=null) an issue's module/epic — the dimension the
@@ -100,43 +92,19 @@ public static class IssueEndpoints
         });
 
         group.MapPost("/{seq:int}/transitions", async (string slug, int seq, TransitionIssueRequest req,
-            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
+            IIssuesOrchestrator orchestrator, HttpContext ctx, CancellationToken ct) =>
         {
             // WAY-19: writer tokens can edit fields but not move state — 403 unless the caller
             // holds issue:transition (or admin). Cairn's transition uses an admin token.
             AuthGuard.RequireTransitionRights(ctx);
-            var project = await projects.GetBySlugAsync(slug, ct)
-                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            if (req.Force && string.IsNullOrWhiteSpace(req.BypassReason))
-                throw new ValidationException("bypass_reason_required", "force=true requires a non-empty BypassReason.");
-            var principal = ctx.GetPrincipal();
-            var updated = await issues.TransitionAsync(project.Id, seq, req.ToStateId, req.Force, req.BypassReason, principal, ct);
-            return Results.Ok(ToDto(updated));
+            return Results.Ok(await orchestrator.TransitionAsync(slug, seq, req, ctx.GetPrincipal(), ct));
         });
 
         group.MapGet("/", async (string slug, int? limit, string? cursor, string? category,
-            IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
+            IIssueService issues, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireAuth(ctx);
-            var project = await projects.GetBySlugAsync(slug, ct)
-                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            Waypoint.Domain.Enums.TicketCategory? categoryFilter = null;
-            if (!string.IsNullOrWhiteSpace(category))
-            {
-                if (!TicketCategories.TryParse(category, out var cf))
-                    throw new ValidationException("invalid_category", $"Unknown ticket category '{category}'.");
-                categoryFilter = cf;
-            }
-            var pageSize = Math.Clamp(limit ?? IssueRepository.DefaultPageSize, 1, IssueRepository.MaxPageSize);
-            var (items, total) = await issues.ListAsync(project.Id, pageSize, cursor, categoryFilter, ct);
-            string? nextCursor = null;
-            if (items.Count == pageSize)
-            {
-                var last = items[^1];
-                nextCursor = Cursor.Encode(last.CreatedAt, last.Id);
-            }
-            var data = items.Select(ToDto).ToList();
-            return Results.Ok(new PagedResponse<IssueDto>(data, nextCursor, total));
+            return Results.Ok(await issues.ListAsync(slug, limit, cursor, category, ct));
         });
 
         group.MapGet("/{seq:int}/activity", async (string slug, int seq,
@@ -157,13 +125,5 @@ public static class IssueEndpoints
         });
     }
 
-    private static IssueDto ToDto(Issue i) => new(
-        i.Id, i.SequenceId, i.Title, i.DescriptionMd,
-        i.StateId, i.State.Name,
-        i.IssueTypeId, i.IssueType.Name,
-        (int)i.Priority,
-        i.EpicId, i.Epic?.Title,   // module (epic): EpicId always set; Title only when Epic is included
-        i.CycleId, i.Cycle?.Name,  // milestone (cycle): same include rule as Epic
-        Waypoint.Domain.TicketCategories.ToWire(i.Category),
-        i.CreatedAt, i.UpdatedAt);
+    private static IssueDto ToDto(Issue i) => Waypoint.Api.Endpoints.IssueMapper.ToDto(i);
 }

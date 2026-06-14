@@ -52,7 +52,9 @@ builder.Services.AddDbContext<WaypointDbContext>(opts =>
 builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<Waypoint.Api.Webhooks.IWebhookPublisher, Waypoint.Api.Webhooks.WebhookPublisher>();
-builder.Services.AddScoped<IIssueRepository, IssueRepository>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.IssueCrud.IIssueManager, Waypoint.Api.Subsystems.Issues.IssueCrud.IssueManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.IssueCrud.IIssueService, Waypoint.Api.Subsystems.Issues.IssueCrud.IssueService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.IIssuesOrchestrator, Waypoint.Api.Subsystems.Issues.IssuesOrchestrator>();
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.Comments.ICommentManager, Waypoint.Api.Subsystems.Issues.Comments.CommentManager>();
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.Comments.ICommentService, Waypoint.Api.Subsystems.Issues.Comments.CommentService>();
 builder.Services.AddScoped<IIntentRepository, IntentRepository>();

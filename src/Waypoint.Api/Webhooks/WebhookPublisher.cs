@@ -9,7 +9,7 @@ namespace Waypoint.Api.Webhooks;
 /// <summary>
 /// WAY-6: turns a domain event into one WebhookDelivery row per matching subscription.
 /// Caller doesn't SaveChanges — Publisher only stages, the surrounding write (e.g.
-/// IssueRepository.TransitionAsync) flushes everything together so a failed primary
+/// IssuesOrchestrator.TransitionAsync) flushes everything together so a failed primary
 /// write doesn't leave orphan deliveries.
 /// </summary>
 public interface IWebhookPublisher
