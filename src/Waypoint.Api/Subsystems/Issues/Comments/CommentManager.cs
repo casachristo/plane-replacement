@@ -3,30 +3,35 @@ using Waypoint.Domain;
 using Waypoint.Domain.Entities;
 using Waypoint.Domain.Enums;
 
-namespace Waypoint.Api.Repositories;
+namespace Waypoint.Api.Subsystems.Issues.Comments;
 
-public sealed class CommentRepository : ICommentRepository
+// Manager — owns Comment state. The ONLY thing that persists comments (and the paired
+// "commented" activity). Private to the Comments feature; callers use ICommentService.
+public interface ICommentManager
 {
-    private readonly WaypointDbContext _db;
-    public CommentRepository(WaypointDbContext db) => _db = db;
+    Task<Comment> CreateAsync(Guid issueId, string bodyMd, Guid? authorUserId, CancellationToken ct);
+    Task<IReadOnlyList<Comment>> ListByIssueAsync(Guid issueId, CancellationToken ct);
+}
 
+public sealed class CommentManager(WaypointDbContext db) : ICommentManager
+{
     public async Task<Comment> CreateAsync(Guid issueId, string bodyMd, Guid? authorUserId, CancellationToken ct)
     {
         var comment = new Comment { IssueId = issueId, BodyMd = bodyMd, AuthorUserId = authorUserId };
-        _db.Comments.Add(comment);
-        _db.Activities.Add(new Activity
+        db.Comments.Add(comment);
+        db.Activities.Add(new Activity
         {
             IssueId = issueId,
             ActorType = authorUserId is null ? ActorType.System : ActorType.User,
             ActorId = authorUserId,
             Verb = "commented",
         });
-        await _db.SaveChangesAsync(ct);
+        await db.SaveChangesAsync(ct);
         return comment;
     }
 
     public async Task<IReadOnlyList<Comment>> ListByIssueAsync(Guid issueId, CancellationToken ct) =>
-        await _db.Comments.AsNoTracking()
+        await db.Comments.AsNoTracking()
             .Where(c => c.IssueId == issueId)
             .OrderBy(c => c.CreatedAt)
             .ToListAsync(ct);

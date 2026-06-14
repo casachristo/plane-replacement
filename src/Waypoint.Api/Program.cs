@@ -53,7 +53,8 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
 builder.Services.AddScoped<Waypoint.Api.Webhooks.IWebhookPublisher, Waypoint.Api.Webhooks.WebhookPublisher>();
 builder.Services.AddScoped<IIssueRepository, IssueRepository>();
-builder.Services.AddScoped<ICommentRepository, CommentRepository>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.Comments.ICommentManager, Waypoint.Api.Subsystems.Issues.Comments.CommentManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.Comments.ICommentService, Waypoint.Api.Subsystems.Issues.Comments.CommentService>();
 builder.Services.AddScoped<IIntentRepository, IntentRepository>();
 builder.Services.AddScoped<IWorklistRepository, WorklistRepository>();
 // Order matters: the middleware takes the FIRST resolver that returns a principal.
