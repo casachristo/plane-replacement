@@ -27,3 +27,6 @@ appsettings.*.local.json
 TestResults/
 coverage*.xml
 StrykerOutput/
+
+# Importer publish output (regenerate with ./publish-importer.sh)
+publish-importer/
