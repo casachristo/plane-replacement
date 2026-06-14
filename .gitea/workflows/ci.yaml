@@ -139,3 +139,19 @@ jobs:
         # passed; 70 is the house floor with margin to absorb the flake. New/changed
         # logic still gets its survivors killed individually in the test suite.
         run: dotnet stryker --break-at 80
+
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm ci
+        working-directory: web
+      - name: Typecheck
+        run: npm run typecheck
+        working-directory: web
+      - name: Component tests (vitest)
+        run: npm run test
+        working-directory: web
