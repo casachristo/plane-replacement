@@ -71,4 +71,14 @@ public class TokenHasherMutationCoverage
         full.Substring(4, 8).Should().Be(prefix);
         full.Split('_', 3).Length.Should().Be(3);  // logical structure: wpt / prefix / secret
     }
+
+    [Fact]
+    public void Verify_returns_false_when_cost_parameters_are_unparseable()
+    {
+        // WAY-25: Verify reads the cost (m=,t=) from the stored PHC string; a hash whose
+        // parameter segment lacks m/t cannot be recomputed and must be rejected.
+        var salt = System.Convert.ToBase64String(new byte[16]);
+        var hash = System.Convert.ToBase64String(new byte[32]);
+        TokenHasher.Verify("x", "$argon2id$v=19$nope$" + salt + "$" + hash).Should().BeFalse();
+    }
 }

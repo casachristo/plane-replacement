@@ -21,6 +21,11 @@ concurrency:
 # process to a POLLING file watcher so it consumes zero inotify instances regardless of host.
 env:
   DOTNET_USE_POLLING_FILE_WATCHER: "true"
+  # WAY-25: cheap token-hash cost in CI only — the prod 64MB/3-iter Argon2 made the
+  # api-auth mutation score non-deterministic (timeouts under Stryker concurrency).
+  # Unset in the cluster, so production keeps the strong cost.
+  WAYPOINT_ARGON2_MEMORY_KB: "1024"
+  WAYPOINT_ARGON2_ITERATIONS: "1"
 
 jobs:
   test:
@@ -133,4 +138,4 @@ jobs:
         # CI-only ServiceBearerResolver null flake. 80 was aspirational and never
         # passed; 70 is the house floor with margin to absorb the flake. New/changed
         # logic still gets its survivors killed individually in the test suite.
-        run: dotnet stryker --break-at 70
+        run: dotnet stryker --break-at 80
