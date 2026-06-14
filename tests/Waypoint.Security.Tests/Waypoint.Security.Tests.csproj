@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Waypoint.Api\Waypoint.Api.csproj" />
+    <ProjectReference Include="..\Waypoint.Api.Tests\Waypoint.Api.Tests.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>

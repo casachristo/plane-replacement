@@ -9,5 +9,6 @@
     <Project Path="tests/Waypoint.Api.Tests/Waypoint.Api.Tests.csproj" />
     <Project Path="tests/Waypoint.Architecture.Tests/Waypoint.Architecture.Tests.csproj" />
     <Project Path="tests/Waypoint.Domain.Tests/Waypoint.Domain.Tests.csproj" />
+    <Project Path="tests/Waypoint.Security.Tests/Waypoint.Security.Tests.csproj" />
   </Folder>
 </Solution>
