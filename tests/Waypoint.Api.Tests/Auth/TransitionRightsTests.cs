@@ -63,7 +63,7 @@ public class TransitionRightsTests : IClassFixture<PostgresFixture>
             // Seed the issue out-of-band too: the principal under test may lack
             // issue:create (WAY-27), and provisioning is admin/out-of-band anyway.
             var issues = scope.ServiceProvider.GetRequiredService<IIssueRepository>();
-            var created = await issues.CreateAsync(project.Id, "X", "y", null, null, null, CancellationToken.None);
+            var created = await issues.CreateAsync(project.Id, "X", "y", null, null, null, Waypoint.Domain.Enums.TicketCategory.Feature, CancellationToken.None);
             seq = created.SequenceId;
         }
         return (factory, seq, doneId);

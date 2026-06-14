@@ -21,6 +21,8 @@ public class Issue
     public Epic? Epic { get; set; }
     public Guid? CycleId { get; set; }
     public Cycle? Cycle { get; set; }
+    // WAY-24: first-class ticket taxonomy (default Feature).
+    public Waypoint.Domain.Enums.TicketCategory Category { get; set; } = Waypoint.Domain.Enums.TicketCategory.Feature;
     public Guid[] AssigneeIds { get; set; } = [];
     public DateTimeOffset? DueDate { get; set; }
     public string? ExternalId { get; set; }

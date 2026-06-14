@@ -14,6 +14,7 @@ public sealed record IssueDto(
     string? EpicTitle,
     Guid? CycleId,
     string? CycleName,
+    string Category,
     DateTimeOffset CreatedAt,
     DateTimeOffset UpdatedAt)
 {

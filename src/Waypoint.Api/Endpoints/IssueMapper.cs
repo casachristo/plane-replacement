@@ -13,5 +13,6 @@ public static class IssueMapper
         (int)i.Priority,
         i.EpicId, i.Epic?.Title,
         i.CycleId, i.Cycle?.Name,
+        Waypoint.Domain.TicketCategories.ToWire(i.Category),
         i.CreatedAt, i.UpdatedAt);
 }

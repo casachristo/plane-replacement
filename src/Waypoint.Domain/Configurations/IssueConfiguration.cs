@@ -14,6 +14,7 @@ public class IssueConfiguration : IEntityTypeConfiguration<Issue>
         builder.Property(i => i.Title).HasMaxLength(500).IsRequired();
         builder.Property(i => i.DescriptionMd).IsRequired();
         builder.Property(i => i.Priority).HasConversion<int>();
+        builder.Property(i => i.Category).HasConversion<int>();
         builder.Property(i => i.AssigneeIds).HasColumnType("uuid[]").HasDefaultValueSql("'{}'::uuid[]");
         builder.Property(i => i.ExternalId).HasMaxLength(200);
         builder.Property(i => i.ExternalSource).HasMaxLength(50);

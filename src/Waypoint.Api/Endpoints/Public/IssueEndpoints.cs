@@ -20,7 +20,10 @@ public static class IssueEndpoints
             AuthGuard.RequireWriteScope(ctx, "issue:create");
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var issue = await issues.CreateAsync(project.Id, req.Title, req.DescriptionMd, req.IssueTypeId, req.EpicId, req.CycleId, ct);
+            var category = Waypoint.Domain.Enums.TicketCategory.Feature;
+            if (!string.IsNullOrWhiteSpace(req.Category) && !TicketCategories.TryParse(req.Category, out category))
+                throw new ValidationException("invalid_category", $"Unknown ticket category '{req.Category}'.");
+            var issue = await issues.CreateAsync(project.Id, req.Title, req.DescriptionMd, req.IssueTypeId, req.EpicId, req.CycleId, category, ct);
             var withIncludes = await issues.GetBySequenceAsync(project.Id, issue.SequenceId, ct);
             return Results.Created($"{projectsPrefix}/{slug}/issues/{issue.SequenceId}", ToDto(withIncludes!));
         });
@@ -111,14 +114,21 @@ public static class IssueEndpoints
             return Results.Ok(ToDto(updated));
         });
 
-        group.MapGet("/", async (string slug, int? limit, string? cursor,
+        group.MapGet("/", async (string slug, int? limit, string? cursor, string? category,
             IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
+            Waypoint.Domain.Enums.TicketCategory? categoryFilter = null;
+            if (!string.IsNullOrWhiteSpace(category))
+            {
+                if (!TicketCategories.TryParse(category, out var cf))
+                    throw new ValidationException("invalid_category", $"Unknown ticket category '{category}'.");
+                categoryFilter = cf;
+            }
             var pageSize = Math.Clamp(limit ?? IssueRepository.DefaultPageSize, 1, IssueRepository.MaxPageSize);
-            var (items, total) = await issues.ListAsync(project.Id, pageSize, cursor, ct);
+            var (items, total) = await issues.ListAsync(project.Id, pageSize, cursor, categoryFilter, ct);
             string? nextCursor = null;
             if (items.Count == pageSize)
             {
@@ -154,5 +164,6 @@ public static class IssueEndpoints
         (int)i.Priority,
         i.EpicId, i.Epic?.Title,   // module (epic): EpicId always set; Title only when Epic is included
         i.CycleId, i.Cycle?.Name,  // milestone (cycle): same include rule as Epic
+        Waypoint.Domain.TicketCategories.ToWire(i.Category),
         i.CreatedAt, i.UpdatedAt);
 }

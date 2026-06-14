@@ -58,7 +58,7 @@ public sealed class IssueRepository : IIssueRepository
         }
     }
 
-    public async Task<Issue> CreateAsync(Guid projectId, string title, string descriptionMd, Guid? issueTypeId, Guid? epicId, Guid? cycleId, CancellationToken ct)
+    public async Task<Issue> CreateAsync(Guid projectId, string title, string descriptionMd, Guid? issueTypeId, Guid? epicId, Guid? cycleId, Waypoint.Domain.Enums.TicketCategory category, CancellationToken ct)
     {
         var project = await _db.Projects.FindAsync([projectId], ct)
             ?? throw new NotFoundException("project_not_found", "Project not found.");
@@ -87,6 +87,7 @@ public sealed class IssueRepository : IIssueRepository
             IssueTypeId = typeId,
             EpicId = epicId,
             CycleId = cycleId,
+            Category = category,
         };
         _db.Issues.Add(issue);
         await _db.SaveChangesAsync(ct);
@@ -242,7 +243,7 @@ public sealed class IssueRepository : IIssueRepository
             ?? throw new InvalidOperationException("Issue vanished after update.");
     }
 
-    public async Task<(IReadOnlyList<Issue> Items, long Total)> ListAsync(Guid projectId, int limit, string? cursor, CancellationToken ct)
+    public async Task<(IReadOnlyList<Issue> Items, long Total)> ListAsync(Guid projectId, int limit, string? cursor, Waypoint.Domain.Enums.TicketCategory? category, CancellationToken ct)
     {
         var query = _db.Issues.AsNoTracking()
             .Include(i => i.State).Include(i => i.IssueType)
@@ -254,6 +255,7 @@ public sealed class IssueRepository : IIssueRepository
             query = query.Where(i => i.CreatedAt < ts || (i.CreatedAt == ts && i.Id.CompareTo(id) < 0));
         }
 
+        if (category is { } cat) query = query.Where(i => i.Category == cat);
         var total = await _db.Issues.AsNoTracking().Where(i => i.ProjectId == projectId).LongCountAsync(ct);
         var items = await query
             .OrderByDescending(i => i.CreatedAt).ThenByDescending(i => i.Id)

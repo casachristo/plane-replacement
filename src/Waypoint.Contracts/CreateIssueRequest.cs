@@ -8,4 +8,5 @@ public sealed record CreateIssueRequest(
     string DescriptionMd,
     Guid? IssueTypeId = null,
     Guid? EpicId = null,
-    Guid? CycleId = null);
+    Guid? CycleId = null,
+    string? Category = null);
