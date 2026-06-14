@@ -1,4 +1,4 @@
-using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Planning.Worklists;
 using Waypoint.Api.Subsystems.Projects.IssueTypes;
 using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Subsystems.Projects.States;
@@ -21,7 +21,7 @@ public sealed class ProjectsOrchestrator(
     IStateService states,
     IWorkflowService workflows,
     IIssueTypeService issueTypes,
-    IWorklistRepository worklists) : IProjectsOrchestrator
+    IWorklistService worklists) : IProjectsOrchestrator
 {
     public async Task<ProjectDto> ProvisionAsync(CreateProjectRequest req, CancellationToken ct)
     {

@@ -1,6 +1,5 @@
 using Waypoint.Api.Endpoints;
 using Waypoint.Api.Pagination;
-using Waypoint.Api.Repositories;
 using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Webhooks;
 using Waypoint.Contracts;

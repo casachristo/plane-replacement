@@ -1,5 +1,5 @@
 using Waypoint.Api.Auth;
-using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Planning.Intents;
 using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Domain;
 
@@ -15,7 +15,7 @@ public static class IntentEndpoints
         var group = app.MapGroup("/internal/v1/projects/{slug}/intents");
 
         group.MapPost("/", async (string slug, FileIntentRequest req,
-            IProjectService projects, IIntentRepository intents,
+            IProjectService projects, IIntentService intents,
             HttpContext ctx, CancellationToken ct) =>
         {
             var principal = AuthGuard.RequireAuth(ctx);
@@ -26,14 +26,14 @@ public static class IntentEndpoints
             if (!Guid.TryParse(principal.Id, out var tokenId))
                 throw new ValidationException("invalid_principal", "Internal principal must have a token id.");
 
-            var intent = await intents.FileAsync(project.Id, req.ModulePath, req.IntentText, tokenId, ct);
-            return Results.Ok(new FileIntentResponse(intent.Id));
+            var intentId = await intents.FileAsync(project.Id, req.ModulePath, req.IntentText, tokenId, ct);
+            return Results.Ok(new FileIntentResponse(intentId));
         });
 
         // DELETE with linked_issue_seq as query param — DELETE bodies don't infer in minimal APIs.
         app.MapDelete("/internal/v1/intents/{intentId:guid}",
             async (Guid intentId, int? linkedIssueSeq,
-                IIntentRepository intents, HttpContext ctx, CancellationToken ct) =>
+                IIntentService intents, HttpContext ctx, CancellationToken ct) =>
             {
                 var principal = AuthGuard.RequireAuth(ctx);
                 if (principal.Kind != PrincipalKind.InternalService)

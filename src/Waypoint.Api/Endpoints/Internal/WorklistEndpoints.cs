@@ -1,6 +1,5 @@
 using Waypoint.Api.Auth;
-using Waypoint.Api.Endpoints;
-using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Planning.Worklists;
 using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Contracts;
 using Waypoint.Domain;
@@ -19,45 +18,40 @@ public static class WorklistEndpoints
         var group = app.MapGroup("/internal/v1/projects/{slug}/worklist");
 
         group.MapGet("/", async (string slug,
-            IProjectService projects, IWorklistRepository worklists, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, IWorklistService worklists, HttpContext ctx, CancellationToken ct) =>
         {
             var projectId = await ResolveProjectId(slug, projects, ctx, ct);
-            var (wl, current) = await worklists.GetAsync(projectId, ct);
-            return Results.Ok(ToStatus(wl, current));
+            return Results.Ok(await worklists.GetAsync(projectId, ct));
         });
 
         group.MapPost("/start", async (string slug,
-            IProjectService projects, IWorklistRepository worklists, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, IWorklistService worklists, HttpContext ctx, CancellationToken ct) =>
         {
             var projectId = await ResolveProjectId(slug, projects, ctx, ct);
-            var (wl, current) = await worklists.StartAsync(projectId, ct);
-            return Results.Ok(ToStatus(wl, current));
+            return Results.Ok(await worklists.StartAsync(projectId, ct));
         });
 
         group.MapPost("/advance", async (string slug,
-            IProjectService projects, IWorklistRepository worklists, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, IWorklistService worklists, HttpContext ctx, CancellationToken ct) =>
         {
             var projectId = await ResolveProjectId(slug, projects, ctx, ct);
-            var (wl, current) = await worklists.AdvanceAsync(projectId, ct);
-            return Results.Ok(ToStatus(wl, current));
+            return Results.Ok(await worklists.AdvanceAsync(projectId, ct));
         });
 
         group.MapPost("/skip", async (string slug, SkipWorklistRequest req,
-            IProjectService projects, IWorklistRepository worklists, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, IWorklistService worklists, HttpContext ctx, CancellationToken ct) =>
         {
             if (string.IsNullOrWhiteSpace(req.Reason))
                 throw new ValidationException("reason_required", "skip requires a non-empty reason.");
             var projectId = await ResolveProjectId(slug, projects, ctx, ct);
-            var (wl, current) = await worklists.SkipAsync(projectId, req.Reason.Trim(), ct);
-            return Results.Ok(ToStatus(wl, current));
+            return Results.Ok(await worklists.SkipAsync(projectId, req.Reason.Trim(), ct));
         });
 
         group.MapPost("/stop", async (string slug,
-            IProjectService projects, IWorklistRepository worklists, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, IWorklistService worklists, HttpContext ctx, CancellationToken ct) =>
         {
             var projectId = await ResolveProjectId(slug, projects, ctx, ct);
-            var wl = await worklists.StopAsync(projectId, ct);
-            return Results.Ok(new WorklistStopSummary(wl.DoneCount, wl.SkippedCount, wl.RemainingCount));
+            return Results.Ok(await worklists.StopAsync(projectId, ct));
         });
     }
 
@@ -71,13 +65,4 @@ public static class WorklistEndpoints
             ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
         return project.Id;
     }
-
-    private static WorklistStatusDto ToStatus(Worklist wl, Issue? current) => new(
-        State: wl.State.ToString().ToLowerInvariant(),
-        Current: current is null ? null : IssueMapper.ToDto(current),
-        RemainingCount: wl.RemainingCount,
-        DoneCount: wl.DoneCount,
-        SkippedCount: wl.SkippedCount,
-        StartedAt: wl.StartedAt,
-        CompletedAt: wl.CompletedAt);
 }

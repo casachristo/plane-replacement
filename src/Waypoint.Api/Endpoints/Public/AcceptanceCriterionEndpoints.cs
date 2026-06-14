@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
-using Waypoint.Api.Repositories;
 using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Webhooks;
 using Waypoint.Contracts;

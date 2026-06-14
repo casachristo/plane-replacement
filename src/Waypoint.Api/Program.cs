@@ -11,7 +11,6 @@ using Waypoint.Api.Auth;
 using Waypoint.Api.Endpoints.InternalApi;
 using Waypoint.Api.Endpoints.PublicApi;
 using Waypoint.Api.Middleware;
-using Waypoint.Api.Repositories;
 using Waypoint.Domain;
 
 if (args.Length > 0 && (args[0] == "seed-token" || args[0] == "migrate"))
@@ -68,8 +67,15 @@ builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.IssueCrud.IIssueServic
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.IIssuesOrchestrator, Waypoint.Api.Subsystems.Issues.IssuesOrchestrator>();
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.Comments.ICommentManager, Waypoint.Api.Subsystems.Issues.Comments.CommentManager>();
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.Comments.ICommentService, Waypoint.Api.Subsystems.Issues.Comments.CommentService>();
-builder.Services.AddScoped<IIntentRepository, IntentRepository>();
-builder.Services.AddScoped<IWorklistRepository, WorklistRepository>();
+// WAY-43: Planning subsystem (epics / cycles / worklist / intents — Manager + Service per feature).
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Epics.IEpicManager, Waypoint.Api.Subsystems.Planning.Epics.EpicManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Epics.IEpicService, Waypoint.Api.Subsystems.Planning.Epics.EpicService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Cycles.ICycleManager, Waypoint.Api.Subsystems.Planning.Cycles.CycleManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Cycles.ICycleService, Waypoint.Api.Subsystems.Planning.Cycles.CycleService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Worklists.IWorklistManager, Waypoint.Api.Subsystems.Planning.Worklists.WorklistManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Worklists.IWorklistService, Waypoint.Api.Subsystems.Planning.Worklists.WorklistService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Intents.IIntentManager, Waypoint.Api.Subsystems.Planning.Intents.IntentManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Intents.IIntentService, Waypoint.Api.Subsystems.Planning.Intents.IntentService>();
 // Order matters: the middleware takes the FIRST resolver that returns a principal.
 // Authelia SSO header (when trusted) identifies a human first; then the waypoint_session
 // cookie; then a service bearer token for API clients.
@@ -211,6 +217,7 @@ app.MapSearchEndpoints("/internal/v1");
 app.MapProjectEndpoints("/api/v1/projects");
 app.MapIssueEndpoints("/api/v1/projects");
 app.MapEpicEndpoints("/api/v1/projects");
+app.MapCycleEndpoints("/api/v1/projects");
 app.MapCommentEndpoints("/api/v1/projects");
 app.MapAcceptanceCriterionEndpoints("/api/v1/projects");
 
@@ -218,6 +225,7 @@ app.MapAcceptanceCriterionEndpoints("/api/v1/projects");
 app.MapProjectEndpoints("/internal/v1/projects");
 app.MapIssueEndpoints("/internal/v1/projects");
 app.MapEpicEndpoints("/internal/v1/projects");
+app.MapCycleEndpoints("/internal/v1/projects");
 app.MapCommentEndpoints("/internal/v1/projects");
 app.MapAcceptanceCriterionEndpoints("/internal/v1/projects");
 app.MapIntentEndpoints();

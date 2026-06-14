@@ -1,6 +1,5 @@
 using Waypoint.Api.Auth;
 using Waypoint.Api.Endpoints;
-using Waypoint.Api.Repositories;
 using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Subsystems.Issues.IssueCrud;
 using Waypoint.Api.Webhooks;

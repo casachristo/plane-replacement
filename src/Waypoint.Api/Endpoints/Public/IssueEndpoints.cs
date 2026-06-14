@@ -1,9 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
-using Waypoint.Api.Repositories;
 using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Subsystems.Issues;
 using Waypoint.Api.Subsystems.Issues.IssueCrud;
+using Waypoint.Api.Subsystems.Planning.Cycles;
 using Waypoint.Contracts;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
@@ -75,13 +75,13 @@ public static class IssueEndpoints
         // Assign (or unassign, with cycleId=null) an issue's cycle/milestone — the sprint
         // dimension, parallel to /epic above.
         group.MapPut("/{seq:int}/cycle", async (string slug, int seq, AssignCycleRequest req,
-            IProjectService projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, ICycleService cycles, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:write");
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             if (req.CycleId is { } cycleId &&
-                !await db.Set<Cycle>().AnyAsync(c => c.Id == cycleId && c.ProjectId == project.Id, ct))
+                !await cycles.ExistsInProjectAsync(cycleId, project.Id, ct))
                 throw new NotFoundException("cycle_not_found", "Cycle not found in this project.");
             var issue = await db.Issues.Include(i => i.State).Include(i => i.IssueType).Include(i => i.Epic)
                 .FirstOrDefaultAsync(i => i.ProjectId == project.Id && i.SequenceId == seq, ct)

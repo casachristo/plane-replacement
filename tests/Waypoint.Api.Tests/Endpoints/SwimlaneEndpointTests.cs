@@ -4,7 +4,6 @@ using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Cairn;
-using Waypoint.Api.Repositories;
 using Waypoint.Api.Tests.Fixtures;
 using Waypoint.Contracts;
 using Xunit;

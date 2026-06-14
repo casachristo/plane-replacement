@@ -5,7 +5,6 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Waypoint.Api.Auth;
-using Waypoint.Api.Repositories;
 using Waypoint.Api.Tests.Fixtures;
 using Waypoint.Contracts;
 using Waypoint.Domain;
