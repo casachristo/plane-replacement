@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Waypoint.Api.Auth;
+using Waypoint.Api.Subsystems.Identity.Tokens;
 using Waypoint.Api.Tests.Fixtures;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
@@ -45,7 +46,7 @@ public class AuditLogMiddlewareExtraMutationCoverage : IClassFixture<PostgresFix
                 PrincipalKind.InternalService, tokenId.ToString(), "t", []);
             ctx.Request.Method = "POST";
             ctx.Request.Path = "/internal/v1/foo/bar";
-            await mw.InvokeAsync(ctx, db);
+            await mw.InvokeAsync(ctx, new TokenService(new TokenManager(db)));
 
             var row = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
                 .FirstAsync(db.TokenAuditLog, a => a.TokenId == tokenId);
@@ -65,7 +66,7 @@ public class AuditLogMiddlewareExtraMutationCoverage : IClassFixture<PostgresFix
                 PrincipalKind.InternalService, tokenId.ToString(), "t", []);
             ctx.Request.Method = "GET";
             ctx.Request.Path = "/internal/v1/health";
-            await mw.InvokeAsync(ctx, db);
+            await mw.InvokeAsync(ctx, new TokenService(new TokenManager(db)));
 
             var row = await Microsoft.EntityFrameworkCore.EntityFrameworkQueryableExtensions
                 .FirstAsync(db.TokenAuditLog, a => a.TokenId == tokenId);

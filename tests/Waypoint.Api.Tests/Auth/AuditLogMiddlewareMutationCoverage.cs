@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Waypoint.Api.Auth;
+using Waypoint.Api.Subsystems.Identity.Tokens;
 using Waypoint.Api.Tests.Fixtures;
 using Waypoint.Domain;
 using Xunit;
@@ -45,7 +46,7 @@ public class AuditLogMiddlewareMutationCoverage : IClassFixture<PostgresFixture>
         {
             var before = await db.TokenAuditLog.CountAsync();
             var mw = new AuditLogMiddleware(_ => Task.CompletedTask);
-            await mw.InvokeAsync(WithPrincipal(null), db);
+            await mw.InvokeAsync(WithPrincipal(null), new TokenService(new TokenManager(db)));
             var after = await db.TokenAuditLog.CountAsync();
             after.Should().Be(before);
         }
@@ -60,7 +61,7 @@ public class AuditLogMiddlewareMutationCoverage : IClassFixture<PostgresFixture>
             var before = await db.TokenAuditLog.CountAsync();
             var mw = new AuditLogMiddleware(_ => Task.CompletedTask);
             var human = new Principal(PrincipalKind.Human, Guid.NewGuid().ToString(), "u", []);
-            await mw.InvokeAsync(WithPrincipal(human), db);
+            await mw.InvokeAsync(WithPrincipal(human), new TokenService(new TokenManager(db)));
             var after = await db.TokenAuditLog.CountAsync();
             after.Should().Be(before);
         }
@@ -75,7 +76,7 @@ public class AuditLogMiddlewareMutationCoverage : IClassFixture<PostgresFixture>
             var before = await db.TokenAuditLog.CountAsync();
             var mw = new AuditLogMiddleware(_ => Task.CompletedTask);
             var bad = new Principal(PrincipalKind.InternalService, "not-a-guid", "svc", []);
-            await mw.InvokeAsync(WithPrincipal(bad), db);
+            await mw.InvokeAsync(WithPrincipal(bad), new TokenService(new TokenManager(db)));
             var after = await db.TokenAuditLog.CountAsync();
             after.Should().Be(before);
         }
@@ -102,7 +103,7 @@ public class AuditLogMiddlewareMutationCoverage : IClassFixture<PostgresFixture>
             var before = await db.TokenAuditLog.CountAsync(a => a.TokenId == tokenId);
             var mw = new AuditLogMiddleware(_ => Task.CompletedTask);
             var svc = new Principal(PrincipalKind.InternalService, tokenId.ToString(), "audit-token", []);
-            await mw.InvokeAsync(WithPrincipal(svc, "POST", "/api/v1/foo"), db);
+            await mw.InvokeAsync(WithPrincipal(svc, "POST", "/api/v1/foo"), new TokenService(new TokenManager(db)));
             var after = await db.TokenAuditLog.CountAsync(a => a.TokenId == tokenId);
             after.Should().Be(before + 1);
         }
@@ -128,7 +129,7 @@ public class AuditLogMiddlewareMutationCoverage : IClassFixture<PostgresFixture>
             var mw = new AuditLogMiddleware(c => { c.Response.StatusCode = 418; return Task.CompletedTask; });
             var svc = new Principal(PrincipalKind.InternalService, tokenId.ToString(), "t", []);
             var ctx = WithPrincipal(svc, "DELETE", "/internal/v1/foo");
-            await mw.InvokeAsync(ctx, db);
+            await mw.InvokeAsync(ctx, new TokenService(new TokenManager(db)));
 
             var row = await db.TokenAuditLog.OrderByDescending(a => a.At)
                 .FirstAsync(a => a.TokenId == tokenId);
@@ -158,7 +159,7 @@ public class AuditLogMiddlewareMutationCoverage : IClassFixture<PostgresFixture>
             var mw = new AuditLogMiddleware(_ => Task.CompletedTask);
             var svc = new Principal(PrincipalKind.InternalService, tokenId.ToString(), "p", [],
                 PassthroughActorId: "ag-1", PassthroughActorLabel: "Agent 1");
-            await mw.InvokeAsync(WithPrincipal(svc), db);
+            await mw.InvokeAsync(WithPrincipal(svc), new TokenService(new TokenManager(db)));
 
             var row = await db.TokenAuditLog.OrderByDescending(a => a.At)
                 .FirstAsync(a => a.TokenId == tokenId);

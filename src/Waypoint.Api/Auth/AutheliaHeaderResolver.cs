@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Waypoint.Api.Subsystems.Identity.Scopes;
 
 namespace Waypoint.Api.Auth;
 
@@ -35,7 +36,7 @@ public sealed class AutheliaHeaderResolver : IPrincipalResolver
             Kind: PrincipalKind.Human,
             Id: email,
             DisplayName: string.IsNullOrWhiteSpace(name) ? email : name.Trim(),
-            Scopes: DeriveScopes(groups));
+            Scopes: ScopePolicy.ForGroups(groups, _options.AdminGroups));
         return Task.FromResult<Principal?>(principal);
     }
 
@@ -46,13 +47,4 @@ public sealed class AutheliaHeaderResolver : IPrincipalResolver
         string.IsNullOrWhiteSpace(raw)
             ? Array.Empty<string>()
             : raw.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-
-    // Same base scopes as the OIDC session path; admin iff the user is in an AdminGroups group.
-    internal List<string> DeriveScopes(string[] groups)
-    {
-        var scopes = new List<string> { "issue:read", "issue:create", "issue:write", "issue:transition", "comment:create" };
-        if (groups.Any(g => _options.AdminGroups.Contains(g, StringComparer.Ordinal)))
-            scopes.Add("admin");
-        return scopes;
-    }
 }

@@ -1,8 +1,5 @@
-using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
-using Waypoint.Domain;
-using Waypoint.Domain.Entities;
-using Waypoint.Domain.Enums;
+using Waypoint.Api.Subsystems.Identity.Tokens;
 
 namespace Waypoint.Api.Endpoints.PublicApi;
 
@@ -17,61 +14,43 @@ public static class AdminEndpoints
     {
         var tokens = app.MapGroup("/api/admin/tokens");
 
-        tokens.MapGet("/", async (WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+        tokens.MapGet("/", async (ITokenService svc, HttpContext ctx, CancellationToken ct) =>
         {
             RequireAdmin(ctx);
-            var list = await db.ApiTokens.AsNoTracking()
-                .OrderByDescending(t => t.CreatedAt)
+            var list = (await svc.ListAsync(ct))
                 .Select(t => new ApiTokenDto(t.Id, t.Name, t.Prefix, t.Scopes, t.Kind.ToString(),
                     t.LastUsedAt, t.RevokedAt, t.CreatedAt))
-                .ToListAsync(ct);
+                .ToList();
             return Results.Ok(list);
         });
 
-        tokens.MapPost("/", async (CreateApiTokenRequest req, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+        tokens.MapPost("/", async (CreateApiTokenRequest req, ITokenService svc, HttpContext ctx, CancellationToken ct) =>
         {
             RequireAdmin(ctx);
-            if (!Enum.TryParse<TokenKind>(req.Kind, ignoreCase: true, out var kind))
-                throw new ValidationException("invalid_kind", $"Unknown token kind: {req.Kind}");
-            var (prefix, fullToken) = TokenHasher.GenerateNew();
-            var token = new ApiToken
-            {
-                Name = req.Name, Prefix = prefix, TokenHash = TokenHasher.Hash(fullToken),
-                Scopes = req.Scopes, Kind = kind,
-            };
-            db.ApiTokens.Add(token);
-            await db.SaveChangesAsync(ct);
+            var (token, fullToken) = await svc.CreateAsync(req.Name, req.Scopes, req.Kind, ct);
             var dto = new ApiTokenDto(token.Id, token.Name, token.Prefix, token.Scopes, token.Kind.ToString(),
                 null, null, token.CreatedAt);
             return Results.Created($"/api/admin/tokens/{token.Id}", new ApiTokenCreatedDto(dto, fullToken));
         });
 
-        tokens.MapDelete("/{id:guid}", async (Guid id, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+        tokens.MapDelete("/{id:guid}", async (Guid id, ITokenService svc, HttpContext ctx, CancellationToken ct) =>
         {
             RequireAdmin(ctx);
-            var token = await db.ApiTokens.FirstOrDefaultAsync(t => t.Id == id, ct)
-                ?? throw new NotFoundException("token_not_found", "Token not found.");
-            token.RevokedAt = DateTimeOffset.UtcNow;
-            await db.SaveChangesAsync(ct);
+            await svc.RevokeAsync(id, ct);
             return Results.NoContent();
         });
 
         app.MapGet("/api/admin/audit", async (Guid? tokenId, DateTimeOffset? since,
-            WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+            ITokenService svc, HttpContext ctx, CancellationToken ct) =>
         {
             RequireAdmin(ctx);
-            var query = db.TokenAuditLog.AsNoTracking().AsQueryable();
-            if (tokenId is not null) query = query.Where(a => a.TokenId == tokenId);
-            if (since is not null) query = query.Where(a => a.At >= since);
-            var rows = await query
-                .OrderByDescending(a => a.At)
-                .Take(500)
+            var rows = (await svc.ListAuditAsync(tokenId, since, ct))
                 .Select(a => new
                 {
                     a.Id, a.TokenId, a.PassthroughActorId, a.PassthroughActorLabel,
                     a.Action, a.Path, a.Method, a.Ip, a.StatusCode, a.At,
                 })
-                .ToListAsync(ct);
+                .ToList();
             return Results.Ok(rows);
         });
     }

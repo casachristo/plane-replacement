@@ -76,6 +76,11 @@ builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Worklists.IWorklistM
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Worklists.IWorklistService, Waypoint.Api.Subsystems.Planning.Worklists.WorklistService>();
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Intents.IIntentManager, Waypoint.Api.Subsystems.Planning.Intents.IntentManager>();
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Planning.Intents.IIntentService, Waypoint.Api.Subsystems.Planning.Intents.IntentService>();
+// WAY-44: Identity subsystem (tokens + sessions; scopes policy is the static ScopePolicy).
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Identity.Tokens.ITokenManager, Waypoint.Api.Subsystems.Identity.Tokens.TokenManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Identity.Tokens.ITokenService, Waypoint.Api.Subsystems.Identity.Tokens.TokenService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Identity.Sessions.ISessionManager, Waypoint.Api.Subsystems.Identity.Sessions.SessionManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Identity.Sessions.ISessionService, Waypoint.Api.Subsystems.Identity.Sessions.SessionService>();
 // Order matters: the middleware takes the FIRST resolver that returns a principal.
 // Authelia SSO header (when trusted) identifies a human first; then the waypoint_session
 // cookie; then a service bearer token for API clients.
