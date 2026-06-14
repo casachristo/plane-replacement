@@ -1,6 +1,7 @@
 using Waypoint.Api.Endpoints;
 using Waypoint.Api.Pagination;
 using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Webhooks;
 using Waypoint.Contracts;
 using Waypoint.Domain;
@@ -11,8 +12,8 @@ namespace Waypoint.Api.Subsystems.Issues.IssueCrud;
 
 // Service — stateless interface to the issue-crud feature. Resolves the project, validates
 // input, delegates state changes to the IssueManager, emits this feature's webhooks, and maps
-// to wire DTOs. Holds no state. (Project resolution still goes through IProjectRepository until
-// the Projects subsystem is refactored — WAY-42.)
+// to wire DTOs. Holds no state. (Project resolution goes through the Projects subsystem's
+// IProjectService facade — WAY-42.)
 public interface IIssueService
 {
     Task<IssueDto> CreateAsync(string slug, CreateIssueRequest req, CancellationToken ct);
@@ -21,7 +22,7 @@ public interface IIssueService
     Task<Issue> ResolveAsync(string slug, int seq, CancellationToken ct);
 }
 
-public sealed class IssueService(IIssueManager manager, IProjectRepository projects, IWebhookPublisher publisher) : IIssueService
+public sealed class IssueService(IIssueManager manager, IProjectService projects, IWebhookPublisher publisher) : IIssueService
 {
     // WAY-28: single source of truth for list-page bounds (endpoint + repo can't drift).
     public const int DefaultPageSize = 50;

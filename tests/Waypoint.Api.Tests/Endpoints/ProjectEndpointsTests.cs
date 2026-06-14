@@ -84,4 +84,58 @@ public class ProjectEndpointsTests : IClassFixture<PostgresFixture>
         states!.Should().NotContain(s => s.Group == "Backlog");
         states!.Single(s => s.IsDefault).Name.Should().Be("To Do");
     }
+
+    [Fact]
+    public async Task GET_states_returns_404_for_missing_slug()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+
+        var resp = await client.GetAsync("/api/v1/projects/no-such-proj/states");
+        resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await resp.Content.ReadFromJsonAsync<ErrorResponse>())!.Error.Code.Should().Be("project_not_found");
+    }
+
+    [Fact]
+    public async Task GET_labels_is_empty_for_a_new_project_and_404s_for_a_missing_one()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest("lbl-proj", "Labels", "LBL"));
+
+        var ok = await client.GetAsync("/api/v1/projects/lbl-proj/labels");
+        ok.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ok.Content.ReadFromJsonAsync<List<LabelDto>>())!.Should().BeEmpty();
+
+        var missing = await client.GetAsync("/api/v1/projects/no-such-proj/labels");
+        missing.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await missing.Content.ReadFromJsonAsync<ErrorResponse>())!.Error.Code.Should().Be("project_not_found");
+    }
+
+    [Fact]
+    public async Task PUT_cairn_link_trims_the_name_and_swimlanes_reflect_it_immediately()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest("lnk-proj", "Linked", "LNK"));
+
+        // Read swimlanes first so the slug cache is populated as "unlinked"; the link must still
+        // be visible immediately afterwards (the Service invalidates the cache on write).
+        (await (await client.GetAsync("/api/v1/projects/lnk-proj/swimlanes"))
+            .Content.ReadFromJsonAsync<SwimlanesDto>())!.CairnLinked.Should().BeFalse();
+
+        var link = await client.PutAsJsonAsync("/api/v1/projects/lnk-proj/cairn-link",
+            new SetCairnLinkRequest("  Waypoint  "));
+        link.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await link.Content.ReadFromJsonAsync<ProjectDto>())!.CairnProjectName.Should().Be("Waypoint");
+
+        var swim = await (await client.GetAsync("/api/v1/projects/lnk-proj/swimlanes"))
+            .Content.ReadFromJsonAsync<SwimlanesDto>();
+        swim!.CairnLinked.Should().BeTrue();
+    }
 }

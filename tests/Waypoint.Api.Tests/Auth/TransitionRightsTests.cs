@@ -45,17 +45,18 @@ public class TransitionRightsTests : IClassFixture<PostgresFixture>
         int seq;
         using (var scope = factory.Services.CreateScope())
         {
-            // Provisioning is admin/out-of-band (WAY-5) — seed via the repository.
-            var repo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
-            var project = await repo.CreateAsync(slug, "P", ident, CancellationToken.None);
+            // Provisioning is admin/out-of-band (WAY-5) — seed via the provisioning orchestrator.
+            var projects = scope.ServiceProvider.GetRequiredService<Waypoint.Api.Subsystems.Projects.IProjectsOrchestrator>();
+            var project = await projects.ProvisionAsync(new CreateProjectRequest(slug, "P", ident), CancellationToken.None);
             var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
             var done = db.States.Single(s => s.ProjectId == project.Id && s.Name == "Done");
             doneId = done.Id;
+            var todoId = db.States.Single(s => s.ProjectId == project.Id && s.Name == "To Do").Id;
             var workflow = db.Workflows.Single(w => w.ProjectId == project.Id);
             db.WorkflowTransitions.Add(new WorkflowTransition
             {
                 WorkflowId = workflow.Id,
-                FromStateId = project.DefaultStateId!.Value,
+                FromStateId = todoId,
                 ToStateId = done.Id,
             });
             await db.SaveChangesAsync();

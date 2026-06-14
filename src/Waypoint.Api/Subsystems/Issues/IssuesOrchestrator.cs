@@ -1,6 +1,7 @@
 using Waypoint.Api.Auth;
 using Waypoint.Api.Endpoints;
 using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Subsystems.Issues.IssueCrud;
 using Waypoint.Api.Webhooks;
 using Waypoint.Contracts;
@@ -19,7 +20,7 @@ public interface IIssuesOrchestrator
     Task<IssueDto> TransitionAsync(string slug, int seq, TransitionIssueRequest req, Principal? actor, CancellationToken ct);
 }
 
-public sealed class IssuesOrchestrator(IIssueManager manager, IProjectRepository projects, IWebhookPublisher publisher) : IIssuesOrchestrator
+public sealed class IssuesOrchestrator(IIssueManager manager, IProjectService projects, IWebhookPublisher publisher) : IIssuesOrchestrator
 {
     public async Task<IssueDto> TransitionAsync(string slug, int seq, TransitionIssueRequest req, Principal? actor, CancellationToken ct)
     {

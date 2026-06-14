@@ -1,5 +1,6 @@
 using Waypoint.Api.Auth;
 using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Domain;
 
 namespace Waypoint.Api.Endpoints.InternalApi;
@@ -14,7 +15,7 @@ public static class IntentEndpoints
         var group = app.MapGroup("/internal/v1/projects/{slug}/intents");
 
         group.MapPost("/", async (string slug, FileIntentRequest req,
-            IProjectRepository projects, IIntentRepository intents,
+            IProjectService projects, IIntentRepository intents,
             HttpContext ctx, CancellationToken ct) =>
         {
             var principal = AuthGuard.RequireAuth(ctx);

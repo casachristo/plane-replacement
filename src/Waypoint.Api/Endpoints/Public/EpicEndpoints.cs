@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Contracts;
 using Waypoint.Domain;
 using Waypoint.Domain.Entities;
@@ -14,7 +15,7 @@ public static class EpicEndpoints
     {
         var group = app.MapGroup($"{projectsPrefix}/{{slug}}/epics");
 
-        group.MapGet("/", async (string slug, IProjectRepository projects, WaypointDbContext db,
+        group.MapGet("/", async (string slug, IProjectService projects, WaypointDbContext db,
             HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireAuth(ctx);
@@ -28,7 +29,7 @@ public static class EpicEndpoints
             return Results.Ok(list);
         });
 
-        group.MapPost("/", async (string slug, CreateEpicRequest req, IProjectRepository projects,
+        group.MapPost("/", async (string slug, CreateEpicRequest req, IProjectService projects,
             WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireAuth(ctx);

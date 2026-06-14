@@ -85,8 +85,8 @@ public class SwimlaneEndpointTests : IClassFixture<PostgresFixture>
         await f.EnsureMigratedAsync();
         using (var scope = f.Services.CreateScope())
         {
-            var repo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
-            await repo.CreateAsync("sw-c", "C", "SWC", CancellationToken.None);
+            var projects = scope.ServiceProvider.GetRequiredService<Waypoint.Api.Subsystems.Projects.IProjectsOrchestrator>();
+            await projects.ProvisionAsync(new CreateProjectRequest("sw-c", "C", "SWC"), CancellationToken.None);
         }
         using var c = f.CreateClient();
         var resp = await c.PutAsJsonAsync("/api/v1/projects/sw-c/cairn-link", new SetCairnLinkRequest("Waypoint"));

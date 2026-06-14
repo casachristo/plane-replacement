@@ -39,8 +39,8 @@ public class WorklistEndpointsTests : IClassFixture<PostgresFixture>
         await factory.EnsureMigratedAsync();
         using (var scope = factory.Services.CreateScope())
         {
-            var repo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
-            var project = await repo.CreateAsync(slug, "P", ident, CancellationToken.None);
+            var projects = scope.ServiceProvider.GetRequiredService<Waypoint.Api.Subsystems.Projects.IProjectsOrchestrator>();
+            var project = await projects.ProvisionAsync(new CreateProjectRequest(slug, "P", ident), CancellationToken.None);
             var db = scope.ServiceProvider.GetRequiredService<WaypointDbContext>();
             var todo = db.States.Single(s => s.ProjectId == project.Id && s.Name == "To Do");
             var type = db.IssueTypes.Single(t => t.ProjectId == project.Id);

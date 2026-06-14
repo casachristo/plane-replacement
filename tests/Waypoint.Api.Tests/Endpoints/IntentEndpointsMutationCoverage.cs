@@ -44,8 +44,8 @@ public class IntentEndpointsMutationCoverage : IClassFixture<PostgresFixture>
         // repository rather than the now admin-gated HTTP POST — the service principal under
         // test is a limited token that files intents, not one that creates projects.
         using var scope = factory.Services.CreateScope();
-        var repo = scope.ServiceProvider.GetRequiredService<IProjectRepository>();
-        await repo.CreateAsync(slug, "Test", ident, CancellationToken.None);
+        var projects = scope.ServiceProvider.GetRequiredService<Waypoint.Api.Subsystems.Projects.IProjectsOrchestrator>();
+        await projects.ProvisionAsync(new CreateProjectRequest(slug, "Test", ident), CancellationToken.None);
     }
 
     [Fact]

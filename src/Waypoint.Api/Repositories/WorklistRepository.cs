@@ -13,6 +13,10 @@ namespace Waypoint.Api.Repositories;
 /// </summary>
 public interface IWorklistRepository
 {
+    // Seeds the dormant singleton worklist for a freshly-provisioned project. Called by the
+    // Projects subsystem's provisioning Orchestrator. (Planning-subsystem refactor WAY-43 will
+    // fold this into a WorklistManager; kept on the repository for now as a thin seam.)
+    Task SeedAsync(Guid projectId, CancellationToken ct);
     Task<(Worklist worklist, Issue? current)> GetAsync(Guid projectId, CancellationToken ct);
     Task<(Worklist worklist, Issue? current)> StartAsync(Guid projectId, CancellationToken ct);
     Task<(Worklist worklist, Issue? current)> AdvanceAsync(Guid projectId, CancellationToken ct);
@@ -29,6 +33,12 @@ public sealed class WorklistRepository : IWorklistRepository
     {
         _db = db;
         _publisher = publisher;
+    }
+
+    public async Task SeedAsync(Guid projectId, CancellationToken ct)
+    {
+        _db.Set<Worklist>().Add(new Worklist { ProjectId = projectId, State = WorklistState.Inactive });
+        await _db.SaveChangesAsync(ct);
     }
 
     public async Task<(Worklist, Issue?)> GetAsync(Guid projectId, CancellationToken ct)

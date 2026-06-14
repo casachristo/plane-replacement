@@ -50,7 +50,18 @@ builder.Services.AddDbContext<WaypointDbContext>(opts =>
         .UseSnakeCaseNamingConvention());
 
 builder.Services.AddMemoryCache();
-builder.Services.AddScoped<IProjectRepository, ProjectRepository>();
+// WAY-42: Projects subsystem (Manager owns state, Service is the facade, Orchestrator provisions).
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.ProjectCrud.IProjectManager, Waypoint.Api.Subsystems.Projects.ProjectCrud.ProjectManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.ProjectCrud.IProjectService, Waypoint.Api.Subsystems.Projects.ProjectCrud.ProjectService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.States.IStateManager, Waypoint.Api.Subsystems.Projects.States.StateManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.States.IStateService, Waypoint.Api.Subsystems.Projects.States.StateService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.Workflows.IWorkflowManager, Waypoint.Api.Subsystems.Projects.Workflows.WorkflowManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.Workflows.IWorkflowService, Waypoint.Api.Subsystems.Projects.Workflows.WorkflowService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.IssueTypes.IIssueTypeManager, Waypoint.Api.Subsystems.Projects.IssueTypes.IssueTypeManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.IssueTypes.IIssueTypeService, Waypoint.Api.Subsystems.Projects.IssueTypes.IssueTypeService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.Labels.ILabelManager, Waypoint.Api.Subsystems.Projects.Labels.LabelManager>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.Labels.ILabelService, Waypoint.Api.Subsystems.Projects.Labels.LabelService>();
+builder.Services.AddScoped<Waypoint.Api.Subsystems.Projects.IProjectsOrchestrator, Waypoint.Api.Subsystems.Projects.ProjectsOrchestrator>();
 builder.Services.AddScoped<Waypoint.Api.Webhooks.IWebhookPublisher, Waypoint.Api.Webhooks.WebhookPublisher>();
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.IssueCrud.IIssueManager, Waypoint.Api.Subsystems.Issues.IssueCrud.IssueManager>();
 builder.Services.AddScoped<Waypoint.Api.Subsystems.Issues.IssueCrud.IIssueService, Waypoint.Api.Subsystems.Issues.IssueCrud.IssueService>();

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Subsystems.Issues;
 using Waypoint.Api.Subsystems.Issues.IssueCrud;
 using Waypoint.Contracts;
@@ -54,7 +55,7 @@ public static class IssueEndpoints
         // Assign (or unassign, with epicId=null) an issue's module/epic — the dimension the
         // board can group by.
         group.MapPut("/{seq:int}/epic", async (string slug, int seq, AssignEpicRequest req,
-            IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:write");
             var project = await projects.GetBySlugAsync(slug, ct)
@@ -74,7 +75,7 @@ public static class IssueEndpoints
         // Assign (or unassign, with cycleId=null) an issue's cycle/milestone — the sprint
         // dimension, parallel to /epic above.
         group.MapPut("/{seq:int}/cycle", async (string slug, int seq, AssignCycleRequest req,
-            IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:write");
             var project = await projects.GetBySlugAsync(slug, ct)
@@ -108,7 +109,7 @@ public static class IssueEndpoints
         });
 
         group.MapGet("/{seq:int}/activity", async (string slug, int seq,
-            IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)

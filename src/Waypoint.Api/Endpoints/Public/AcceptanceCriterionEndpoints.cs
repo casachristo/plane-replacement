@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
 using Waypoint.Api.Repositories;
+using Waypoint.Api.Subsystems.Projects.ProjectCrud;
 using Waypoint.Api.Webhooks;
 using Waypoint.Contracts;
 using Waypoint.Domain;
@@ -16,7 +17,7 @@ public static class AcceptanceCriterionEndpoints
         var group = app.MapGroup($"{projectsPrefix}/{{slug}}/issues/{{seq:int}}/acceptance-criteria");
 
         group.MapGet("/", async (string slug, int seq,
-            IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireAuth(ctx);
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
@@ -28,7 +29,7 @@ public static class AcceptanceCriterionEndpoints
         });
 
         group.MapPost("/", async (string slug, int seq, CreateAcceptanceCriterionRequest req,
-            IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:write");
             if (string.IsNullOrWhiteSpace(req.Text))
@@ -56,7 +57,7 @@ public static class AcceptanceCriterionEndpoints
         });
 
         group.MapPatch("/{id:guid}", async (string slug, int seq, Guid id, UpdateAcceptanceCriterionRequest req,
-            IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:write");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
@@ -80,7 +81,7 @@ public static class AcceptanceCriterionEndpoints
         });
 
         group.MapPost("/{id:guid}/check", async (string slug, int seq, Guid id,
-            IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
             var principal = AuthGuard.RequireWriteScope(ctx, "issue:write");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
@@ -100,7 +101,7 @@ public static class AcceptanceCriterionEndpoints
         });
 
         group.MapPost("/{id:guid}/uncheck", async (string slug, int seq, Guid id,
-            IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:write");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
@@ -122,7 +123,7 @@ public static class AcceptanceCriterionEndpoints
         });
 
         group.MapDelete("/{id:guid}", async (string slug, int seq, Guid id,
-            IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
+            IProjectService projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
             AuthGuard.RequireWriteScope(ctx, "issue:write");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
@@ -139,7 +140,7 @@ public static class AcceptanceCriterionEndpoints
         });
     }
 
-    private static async Task<Issue> ResolveIssue(string slug, int seq, IProjectRepository projects, WaypointDbContext db, CancellationToken ct)
+    private static async Task<Issue> ResolveIssue(string slug, int seq, IProjectService projects, WaypointDbContext db, CancellationToken ct)
     {
         var project = await projects.GetBySlugAsync(slug, ct)
             ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
