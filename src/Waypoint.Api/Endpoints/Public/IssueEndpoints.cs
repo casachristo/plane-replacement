@@ -117,7 +117,7 @@ public static class IssueEndpoints
             AuthGuard.RequireAuth(ctx);
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            var pageSize = limit ?? 50;
+            var pageSize = Math.Clamp(limit ?? IssueRepository.DefaultPageSize, 1, IssueRepository.MaxPageSize);
             var (items, total) = await issues.ListAsync(project.Id, pageSize, cursor, ct);
             string? nextCursor = null;
             if (items.Count == pageSize)

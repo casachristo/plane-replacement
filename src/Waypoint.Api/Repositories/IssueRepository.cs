@@ -10,6 +10,13 @@ namespace Waypoint.Api.Repositories;
 
 public sealed class IssueRepository : IIssueRepository
 {
+    // WAY-28: the single source of truth for list-page bounds. The endpoint clamps with
+    // these SAME constants so the DB Take and the has-more/cursor decision can never drift
+    // (the old bug: endpoint compared against the raw limit while the repo clamped to 200,
+    // so limit>200 silently dropped the cursor and truncated the list).
+    public const int DefaultPageSize = 50;
+    public const int MaxPageSize = 200;
+
     private readonly WaypointDbContext _db;
     private readonly IWebhookPublisher _publisher;
     public IssueRepository(WaypointDbContext db, IWebhookPublisher publisher)
@@ -250,7 +257,7 @@ public sealed class IssueRepository : IIssueRepository
         var total = await _db.Issues.AsNoTracking().Where(i => i.ProjectId == projectId).LongCountAsync(ct);
         var items = await query
             .OrderByDescending(i => i.CreatedAt).ThenByDescending(i => i.Id)
-            .Take(Math.Clamp(limit, 1, 200))
+            .Take(Math.Clamp(limit, 1, MaxPageSize))
             .ToListAsync(ct);
         return (items, total);
     }

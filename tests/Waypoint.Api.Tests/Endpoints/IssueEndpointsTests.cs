@@ -302,4 +302,42 @@ public class IssueEndpointsTests : IClassFixture<PostgresFixture>
             new AssignCycleRequest(Guid.NewGuid()));
         resp.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task GET_list_clamps_oversized_limit_and_still_emits_cursor()
+    {
+        await using var factory = new WaypointApiFactory { PostgresConnectionString = _pg.ConnectionString };
+        await factory.EnsureMigratedAsync();
+        using var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/api/v1/projects", new CreateProjectRequest("clamp-proj", "CL", "CLP"));
+
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<Waypoint.Domain.WaypointDbContext>();
+            var project = db.Projects.Single(p => p.Slug == "clamp-proj");
+            var stateId = project.DefaultStateId!.Value;
+            var typeId = db.IssueTypes.First(t => t.ProjectId == project.Id && t.IsDefault).Id;
+            var baseTime = DateTimeOffset.UtcNow.AddDays(-1);
+            for (var i = 1; i <= 201; i++)
+                db.Issues.Add(new Waypoint.Domain.Entities.Issue {
+                    ProjectId = project.Id, SequenceId = i, Title = $"I{i}", DescriptionMd = "",
+                    StateId = stateId, IssueTypeId = typeId, CreatedAt = baseTime.AddSeconds(i) });
+            db.SaveChanges();
+        }
+
+        // limit 500 > the 200 clamp: must return exactly 200 AND a non-null cursor.
+        // The bug returned 200 items with a null cursor, so the client believed the
+        // list ended and silently dropped the remaining row.
+        var resp = await client.GetAsync("/api/v1/projects/clamp-proj/issues?limit=500");
+        resp.StatusCode.Should().Be(HttpStatusCode.OK);
+        var page = await resp.Content.ReadFromJsonAsync<PagedResponse<IssueDto>>();
+        page!.Data.Should().HaveCount(200);
+        page.TotalCount.Should().Be(201);
+        page.NextCursor.Should().NotBeNullOrEmpty();
+
+        var resp2 = await client.GetAsync($"/api/v1/projects/clamp-proj/issues?limit=500&cursor={Uri.EscapeDataString(page.NextCursor!)}");
+        var page2 = await resp2.Content.ReadFromJsonAsync<PagedResponse<IssueDto>>();
+        page2!.Data.Should().HaveCount(1);
+        page2.NextCursor.Should().BeNull();
+    }
 }
