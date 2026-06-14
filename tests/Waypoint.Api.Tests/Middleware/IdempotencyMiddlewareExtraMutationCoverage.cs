@@ -78,17 +78,18 @@ public class IdempotencyMiddlewareExtraMutationCoverage
     }
 
     [Fact]
-    public async Task POST_with_5xx_response_is_cached_too()
+    public async Task POST_with_5xx_response_is_not_cached()
     {
-        // The middleware caches by Idempotency-Key regardless of status code; once
-        // a 500 is recorded, replaying with same key returns the same 500. This pins
-        // any mutation that conditionally skips caching for non-2xx responses.
+        // WAY-26: a 5xx is transient and must NOT be cached — replaying the same key
+        // re-runs the request instead of serving a stale 500 for 24h. Pins the
+        // status-code guard (StatusCode < 500) that gates the cache write.
         var key = $"k-{Guid.NewGuid()}";
         var (firstCalled, firstStatus, _, _) = await Drive("POST", key, 500, "boom");
         firstCalled.Should().BeTrue();
+        firstStatus.Should().Be(500);
         var (secondCalled, secondStatus, _, _) = await Drive("POST", key, 200, "ok");
-        secondCalled.Should().BeFalse();
-        secondStatus.Should().Be(firstStatus);
+        secondCalled.Should().BeTrue();        // not served from cache
+        secondStatus.Should().Be(200);
     }
 
     [Fact]

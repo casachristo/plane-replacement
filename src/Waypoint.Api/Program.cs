@@ -162,8 +162,10 @@ app.UseAuthentication();
 app.UseMiddleware<RequestIdMiddleware>();
 app.UseMiddleware<ErrorEnvelopeMiddleware>();
 app.UseMiddleware<SurfaceGuardMiddleware>();
-app.UseMiddleware<IdempotencyMiddleware>();
+// WAY-26: PrincipalMiddleware first so IdempotencyMiddleware can scope its cache key by
+// principal (otherwise the cache leaks one caller’s response to another reusing the key).
 app.UseMiddleware<PrincipalMiddleware>();
+app.UseMiddleware<IdempotencyMiddleware>();
 app.UseMiddleware<AuditLogMiddleware>();
 
 app.MapGet("/healthz/live", () => Results.Ok(new { status = "ok" }));
