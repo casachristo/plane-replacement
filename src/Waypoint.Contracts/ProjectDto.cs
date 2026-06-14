@@ -6,4 +6,5 @@ public sealed record ProjectDto(
     string Name,
     string Identifier,
     DateTimeOffset CreatedAt,
-    DateTimeOffset UpdatedAt);
+    DateTimeOffset UpdatedAt,
+    string? CairnProjectName = null);

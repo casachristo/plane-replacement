@@ -14,6 +14,7 @@ public class ProjectConfiguration : IEntityTypeConfiguration<Project>
         builder.Property(p => p.Slug).HasMaxLength(64).IsRequired();
         builder.Property(p => p.Name).HasMaxLength(200).IsRequired();
         builder.Property(p => p.Identifier).HasMaxLength(8).IsRequired();
+        builder.Property(p => p.CairnProjectName).HasMaxLength(128);
         builder.HasIndex(p => p.Slug).IsUnique();
         builder.HasIndex(p => p.Identifier).IsUnique();
         builder.Property(p => p.CreatedAt).HasDefaultValueSql("now()");

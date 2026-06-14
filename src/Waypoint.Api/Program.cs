@@ -60,6 +60,8 @@ builder.Services.AddScoped<IWorklistRepository, WorklistRepository>();
 // Authelia SSO header (when trusted) identifies a human first; then the waypoint_session
 // cookie; then a service bearer token for API clients.
 builder.Services.AddScoped<IPrincipalResolver, AutheliaHeaderResolver>();
+// WAY-15: module-swimlane source (Null default; live Cairn HTTP source is a later phase).
+builder.Services.AddSingleton<Waypoint.Api.Cairn.ICairnModuleSource, Waypoint.Api.Cairn.NullCairnModuleSource>();
 builder.Services.AddScoped<IPrincipalResolver, OidcSessionResolver>();
 builder.Services.AddScoped<IPrincipalResolver, ServiceBearerResolver>();
 builder.Services.AddHttpClient("waypoint-webhooks", client =>

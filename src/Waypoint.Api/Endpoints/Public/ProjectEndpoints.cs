@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Waypoint.Api.Auth;
+using Waypoint.Api.Cairn;
 using Waypoint.Api.Repositories;
 using Waypoint.Contracts;
 using Waypoint.Domain;
@@ -19,7 +20,7 @@ public static class ProjectEndpoints
             // not be able to spin up projects. Admin tokens carry the synthetic "admin" scope.
             AuthGuard.RequireScope(ctx, "admin");
             var p = await repo.CreateAsync(req.Slug, req.Name, req.Identifier, ct);
-            var dto = new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt);
+            var dto = new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt, p.CairnProjectName);
             return Results.Created($"{prefix}/{p.Slug}", dto);
         });
 
@@ -27,7 +28,7 @@ public static class ProjectEndpoints
         {
             AuthGuard.RequireAuth(ctx);
             var list = await repo.ListAsync(ct);
-            return Results.Ok(list.Select(p => new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt)));
+            return Results.Ok(list.Select(p => new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt, p.CairnProjectName)));
         });
 
         group.MapGet("/{slug}", async (string slug, IProjectRepository repo, HttpContext ctx, CancellationToken ct) =>
@@ -35,7 +36,7 @@ public static class ProjectEndpoints
             AuthGuard.RequireAuth(ctx);
             var p = await repo.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
-            return Results.Ok(new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt));
+            return Results.Ok(new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt, p.CairnProjectName));
         });
 
         group.MapGet("/{slug}/states", async (string slug,
@@ -50,6 +51,32 @@ public static class ProjectEndpoints
                 .Select(s => new StateDto(s.Id, s.Name, s.Group.ToString(), s.Color, s.SortOrder, s.IsDefault))
                 .ToListAsync(ct);
             return Results.Ok(states);
+        });
+
+        // WAY-15: link/unlink a project to a Cairn architecture catalog (admin-only config).
+        group.MapPut("/{slug}/cairn-link", async (string slug, SetCairnLinkRequest req,
+            WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
+        {
+            AuthGuard.RequireScope(ctx, "admin");
+            var p = await db.Projects.FirstOrDefaultAsync(x => x.Slug == slug, ct)
+                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
+            p.CairnProjectName = string.IsNullOrWhiteSpace(req.CairnProjectName) ? null : req.CairnProjectName.Trim();
+            await db.SaveChangesAsync(ct);
+            return Results.Ok(new ProjectDto(p.Id, p.Slug, p.Name, p.Identifier, p.CreatedAt, p.UpdatedAt, p.CairnProjectName));
+        });
+
+        // WAY-15: the board swimlane rows. Unlinked => CairnLinked=false + no modules
+        // (the UI keeps the single-row state Kanban).
+        group.MapGet("/{slug}/swimlanes", async (string slug,
+            IProjectRepository projects, ICairnModuleSource cairn, HttpContext ctx, CancellationToken ct) =>
+        {
+            AuthGuard.RequireAuth(ctx);
+            var p = await projects.GetBySlugAsync(slug, ct)
+                ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
+            if (string.IsNullOrWhiteSpace(p.CairnProjectName))
+                return Results.Ok(new SwimlanesDto(false, System.Array.Empty<string>()));
+            var modules = await cairn.GetModulesAsync(p.CairnProjectName, ct);
+            return Results.Ok(new SwimlanesDto(true, modules));
         });
     }
 }

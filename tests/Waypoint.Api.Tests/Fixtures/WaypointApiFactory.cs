@@ -25,6 +25,9 @@ public class WaypointApiFactory : WebApplicationFactory<Program>
         DisplayName: "Test User",
         Scopes: ["issue:read", "issue:create", "issue:transition", "comment:create", "admin"]);
 
+    /// <summary>Optional hook to override/add services for a specific test (e.g. a fake ICairnModuleSource).</summary>
+    public Action<IServiceCollection>? ConfigureTestServices { get; init; }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -53,6 +56,7 @@ public class WaypointApiFactory : WebApplicationFactory<Program>
             var resolverDescriptors = services.Where(d => d.ServiceType == typeof(IPrincipalResolver)).ToList();
             foreach (var d in resolverDescriptors) services.Remove(d);
             services.AddScoped<IPrincipalResolver>(_ => new FixedPrincipalResolver(TestPrincipal));
+            ConfigureTestServices?.Invoke(services);
         });
     }
 
