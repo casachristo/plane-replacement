@@ -42,6 +42,7 @@ public class TransitionRightsTests : IClassFixture<PostgresFixture>
         await factory.EnsureMigratedAsync();
 
         Guid doneId;
+        int seq;
         using (var scope = factory.Services.CreateScope())
         {
             // Provisioning is admin/out-of-band (WAY-5) — seed via the repository.
@@ -58,12 +59,14 @@ public class TransitionRightsTests : IClassFixture<PostgresFixture>
                 ToStateId = done.Id,
             });
             await db.SaveChangesAsync();
-        }
 
-        using var client = factory.CreateClient();
-        var created = await (await client.PostAsJsonAsync($"/api/v1/projects/{slug}/issues",
-            new CreateIssueRequest("X", "y"))).Content.ReadFromJsonAsync<IssueDto>();
-        return (factory, created!.Sequence, doneId);
+            // Seed the issue out-of-band too: the principal under test may lack
+            // issue:create (WAY-27), and provisioning is admin/out-of-band anyway.
+            var issues = scope.ServiceProvider.GetRequiredService<IIssueRepository>();
+            var created = await issues.CreateAsync(project.Id, "X", "y", null, null, null, CancellationToken.None);
+            seq = created.SequenceId;
+        }
+        return (factory, seq, doneId);
     }
 
     [Fact]

@@ -30,7 +30,7 @@ public static class AcceptanceCriterionEndpoints
         group.MapPost("/", async (string slug, int seq, CreateAcceptanceCriterionRequest req,
             IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            AuthGuard.RequireWriteScope(ctx, "issue:write");
             if (string.IsNullOrWhiteSpace(req.Text))
                 throw new ValidationException("text_required", "Acceptance criterion text must not be empty.");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
@@ -58,7 +58,7 @@ public static class AcceptanceCriterionEndpoints
         group.MapPatch("/{id:guid}", async (string slug, int seq, Guid id, UpdateAcceptanceCriterionRequest req,
             IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            AuthGuard.RequireWriteScope(ctx, "issue:write");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
             var ac = await db.Set<AcceptanceCriterion>()
                 .FirstOrDefaultAsync(a => a.Id == id && a.IssueId == issue.Id, ct)
@@ -82,7 +82,7 @@ public static class AcceptanceCriterionEndpoints
         group.MapPost("/{id:guid}/check", async (string slug, int seq, Guid id,
             IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
-            var principal = AuthGuard.RequireAuth(ctx);
+            var principal = AuthGuard.RequireWriteScope(ctx, "issue:write");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
             var ac = await db.Set<AcceptanceCriterion>()
                 .FirstOrDefaultAsync(a => a.Id == id && a.IssueId == issue.Id, ct)
@@ -102,7 +102,7 @@ public static class AcceptanceCriterionEndpoints
         group.MapPost("/{id:guid}/uncheck", async (string slug, int seq, Guid id,
             IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            AuthGuard.RequireWriteScope(ctx, "issue:write");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
             var ac = await db.Set<AcceptanceCriterion>()
                 .FirstOrDefaultAsync(a => a.Id == id && a.IssueId == issue.Id, ct)
@@ -124,7 +124,7 @@ public static class AcceptanceCriterionEndpoints
         group.MapDelete("/{id:guid}", async (string slug, int seq, Guid id,
             IProjectRepository projects, WaypointDbContext db, IWebhookPublisher pub, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            AuthGuard.RequireWriteScope(ctx, "issue:write");
             var issue = await ResolveIssue(slug, seq, projects, db, ct);
             var ac = await db.Set<AcceptanceCriterion>()
                 .FirstOrDefaultAsync(a => a.Id == id && a.IssueId == issue.Id, ct)

@@ -39,6 +39,22 @@ public static class AuthGuard
         throw new ForbiddenException("transition_forbidden",
             "This credential cannot transition issue state; route the change through Cairn.");
     }
+
+    /// <summary>
+    /// WAY-27: a write endpoint requires its matching write scope (issue:create,
+    /// issue:write, comment:create). The all-powerful "admin" tier is a wildcard
+    /// (mirrors RequireTransitionRights). A read-only credential (e.g. ["issue:read"])
+    /// is rejected with 403 — scopes were previously decorative on writes.
+    /// </summary>
+    public static Principal RequireWriteScope(HttpContext ctx, string scope)
+    {
+        var p = RequireAuth(ctx);
+        if (p.Scopes.Contains("admin", StringComparer.Ordinal) ||
+            p.Scopes.Contains(scope, StringComparer.Ordinal))
+            return p;
+        throw new ForbiddenException("missing_scope",
+            $"This credential lacks the required scope: {scope}.");
+    }
 }
 
 public sealed class UnauthorizedException(string code, string message)

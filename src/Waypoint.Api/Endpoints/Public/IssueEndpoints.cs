@@ -17,7 +17,7 @@ public static class IssueEndpoints
         group.MapPost("/", async (string slug, CreateIssueRequest req,
             IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            AuthGuard.RequireWriteScope(ctx, "issue:create");
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var issue = await issues.CreateAsync(project.Id, req.Title, req.DescriptionMd, req.IssueTypeId, req.EpicId, req.CycleId, ct);
@@ -49,7 +49,7 @@ public static class IssueEndpoints
         group.MapPatch("/{seq:int}", async (string slug, int seq, UpdateIssueRequest req,
             IProjectRepository projects, IIssueRepository issues, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            AuthGuard.RequireWriteScope(ctx, "issue:write");
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var updated = await issues.UpdateAsync(project.Id, seq, req.Title, req.DescriptionMd, req.Priority, ct);
@@ -61,7 +61,7 @@ public static class IssueEndpoints
         group.MapPut("/{seq:int}/epic", async (string slug, int seq, AssignEpicRequest req,
             IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            AuthGuard.RequireWriteScope(ctx, "issue:write");
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             if (req.EpicId is { } epicId &&
@@ -81,7 +81,7 @@ public static class IssueEndpoints
         group.MapPut("/{seq:int}/cycle", async (string slug, int seq, AssignCycleRequest req,
             IProjectRepository projects, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
-            AuthGuard.RequireAuth(ctx);
+            AuthGuard.RequireWriteScope(ctx, "issue:write");
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             if (req.CycleId is { } cycleId &&

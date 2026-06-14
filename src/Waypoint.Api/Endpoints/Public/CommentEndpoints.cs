@@ -15,7 +15,7 @@ public static class CommentEndpoints
         group.MapPost("/", async (string slug, int seq, CreateCommentRequest req,
             IProjectRepository projects, ICommentRepository comments, WaypointDbContext db, HttpContext ctx, CancellationToken ct) =>
         {
-            var principal = AuthGuard.RequireAuth(ctx);
+            var principal = AuthGuard.RequireWriteScope(ctx, "comment:create");
             var project = await projects.GetBySlugAsync(slug, ct)
                 ?? throw new NotFoundException("project_not_found", $"Project '{slug}' not found.");
             var issue = await db.Issues.FirstOrDefaultAsync(i => i.ProjectId == project.Id && i.SequenceId == seq, ct)

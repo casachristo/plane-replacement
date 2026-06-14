@@ -51,7 +51,7 @@ public sealed class OidcSessionResolver : IPrincipalResolver
 
     private List<string> DeriveScopes(string[]? groups)
     {
-        var scopes = new List<string> { "issue:read", "issue:create", "issue:transition", "comment:create" };
+        var scopes = new List<string> { "issue:read", "issue:create", "issue:write", "issue:transition", "comment:create" };
         if (groups is not null && groups.Any(g => _options.AdminGroups.Contains(g, StringComparer.Ordinal)))
             scopes.Add("admin");
         return scopes;
